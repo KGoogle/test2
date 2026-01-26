@@ -3,6 +3,7 @@ name: Auto Update Index HTML
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'
 
