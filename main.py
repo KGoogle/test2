@@ -51,7 +51,7 @@ def collect_test_data():
             "news": news_list,
             "papers": papers_list,
             "videos": videos_list,
-            "data": f"{field} 지표 모니터링 중",
+            "data": f"{field} 핵심 지표 모니터링 중",
             "events": [
                 {"date": "2025-10-10", "title": f"{field} 컨퍼런스"},
                 {"date": "2025-11-20", "title": f"{field} 성과 발표"}
@@ -74,7 +74,7 @@ def generate_html(science_data, nasa_data):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>과학 정보</title>
+    <title>과학 정보 포털</title>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {{
@@ -86,6 +86,7 @@ def generate_html(science_data, nasa_data):
             background-color: var(--bg); color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0; padding: 0; line-height: 1.6;
+            overflow-x: hidden;
         }}
         header {{ 
             position: relative; text-align: center; padding: 60px 20px;
@@ -99,27 +100,33 @@ def generate_html(science_data, nasa_data):
             text-shadow: 0 0 5px rgba(255,255,255,0.5);
             word-break: keep-all; line-height: 1.6; font-weight: 400;
         }}
-        .author {{ display: block; font-size: 14px; margin-top: 10px; color: #ffffff; }}
         
         .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; }}
     
         .tabs-field {{ 
             display: flex; 
-            gap: 12px; 
+            gap: 10px; 
             margin: 0 auto 20px auto; 
             border-bottom: 1px solid var(--border); 
-            padding-bottom: 15px; 
+            padding: 0 15px 15px 15px; 
             overflow-x: auto; 
-            justify-content: center;
-            width: 100%;
+            justify-content: flex-start; /* 기본은 왼쪽 정렬 (잘림 방지) */
             scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
         }}
         .tabs-field::-webkit-scrollbar {{ display: none; }}
 
+        @media (min-width: 600px) {{
+            .tabs-field {{
+                justify-content: center;
+            }}
+        }}
+
         .tab-btn {{ 
             background: transparent; border: 1px solid var(--border); color: var(--text-sub); 
-            padding: 10px 25px; cursor: pointer; border-radius: 8px; font-weight: 600; 
+            padding: 10px 22px; cursor: pointer; border-radius: 8px; font-weight: 600; 
             font-size: 0.95rem; transition: all 0.2s; white-space: nowrap;
+            flex-shrink: 0; /* 버튼 형태 보존 */
         }}
         .tab-btn.active {{ background: var(--accent); color: #000; border-color: var(--accent); }}
         
@@ -156,14 +163,13 @@ def generate_html(science_data, nasa_data):
     <header id="header-container">
         <canvas id="universe"></canvas>
         <div class="header-content">
-            <h1>"삶에 별빛을 섞으세요. <br>하찮은 일에 마음이 괴롭지 않을 겁니다." <span class="author">- 마리아 미첼 -</span></h1>
+            <h1>"삶에 별빛을 섞으세요. <br>하찮은 일에 마음이 괴롭지 않을 겁니다." <br><span style="font-size:14px; margin-top:10px; display:block;">- 마리아 미첼 -</span></h1>
         </div>
     </header>
 
     <div class="container">
-        <nav class="tabs-field" id="main-tabs">{field_buttons_html}</nav>
+        <nav class="tabs-field">{field_buttons_html}</nav>
         <nav id="sub-tabs-container" class="sub-tabs"></nav>
-
         <main id="main-content"></main>
     </div>
 
@@ -208,7 +214,6 @@ def generate_html(science_data, nasa_data):
         function showField(f) {{
             currentField = f;
             currentType = (f === "천문·우주") ? "apod" : "news";
-            
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText === f));
             renderSubTabs();
             render();
@@ -216,27 +221,15 @@ def generate_html(science_data, nasa_data):
 
         function showType(t) {{
             currentType = t;
-            document.querySelectorAll('.sub-btn').forEach(b => {{
-                const onClickStr = b.getAttribute('onclick');
-                if (onClickStr.includes(`'${{t}}'`)) b.classList.add('active');
-                else b.classList.remove('active');
-            }});
+            renderSubTabs();
             render();
         }}
 
         function renderSubTabs() {{
             const container = document.getElementById('sub-tabs-container');
             let tabs = [];
-            if (currentField === "천문·우주") {{
-                tabs.push({{ id: 'apod', name: '오늘의 천문 사진' }});
-            }}
-            tabs.push(
-                {{ id: 'news', name: '뉴스' }},
-                {{ id: 'papers', name: '논문' }},
-                {{ id: 'comm', name: '콘텐츠' }},
-                {{ id: 'data', name: '데이터' }},
-                {{ id: 'events', name: '일정' }}
-            );
+            if (currentField === "천문·우주") tabs.push({{ id: 'apod', name: '오늘의 천문 사진' }});
+            tabs.push({{ id: 'news', name: '뉴스' }}, {{ id: 'papers', name: '논문' }}, {{ id: 'comm', name: '콘텐츠' }}, {{ id: 'data', name: '데이터' }}, {{ id: 'events', name: '일정' }});
 
             container.innerHTML = tabs.map(t => `
                 <button class="sub-btn ${{currentType === t.id ? 'active' : ''}}" onclick="showType('${{t.id}}')">${{t.name}}</button>
@@ -262,11 +255,8 @@ def generate_html(science_data, nasa_data):
                                 <strong>Copyright:</strong> ${{nasa.copyright || 'Public Domain'}} | <strong>Date:</strong> ${{nasa.date}}
                             </div>
                         </div>
-                    </div>
-                    `;
-                }} else {{
-                    html += `<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>`;
-                }}
+                    </div>`;
+                }} else html += `<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>`;
             }} else if (currentType === 'news') {{
                 html += '<div class="card-grid">' + science.news.map(n => `<a href="${{n.link}}" class="card"><div class="card-title">${{n.title}}</div><div class="card-meta">${{n.date}}</div></a>`).join('') + '</div>';
             }} else if (currentType === 'papers') {{
@@ -278,11 +268,13 @@ def generate_html(science_data, nasa_data):
             }} else if (currentType === 'events') {{
                 html += '<div>' + science.events.map(e => `<div class="event-item"><div style="color:var(--text-sub);">${{e.date}}</div><div>${{e.title}}</div></div>`).join('') + '</div>';
             }}
-
             container.innerHTML = html;
         }}
 
-        showField('천문·우주');
+        window.onload = () => {{
+            showField('천문·우주');
+            document.querySelector('.tabs-field').scrollLeft = 0;
+        }};
     </script>
 </body>
 </html>
