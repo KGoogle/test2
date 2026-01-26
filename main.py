@@ -53,8 +53,8 @@ def collect_test_data():
             "videos": videos_list,
             "data": f"{field} 핵심 지표 모니터링 중",
             "events": [
-                {"date": "2025-10-10", "title": f"{field} 컨퍼런스"},
-                {"date": "2025-11-20", "title": f"{field} 성과 발표"}
+                {"date": "2026-1-16", "title": f"{field} 컨퍼런스"},
+                {"date": "2026-1-16", "title": f"{field} 성과 발표"}
             ]
         }
     return all_data
@@ -184,16 +184,21 @@ def generate_html(science_data, nasa_data):
         const headerContainer = document.getElementById('header-container');
         let universeW, universeH, universeDpr = Math.max(1, window.devicePixelRatio || 1);
         const stars = [];
+        let lastWidth = 0;
 
         function resizeUniverse() {{
-            universeW = headerContainer.offsetWidth;
-            universeH = headerContainer.offsetHeight;
-            universeCanvas.width = universeW * universeDpr;
-            universeCanvas.height = universeH * universeDpr;
-            universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
-            createStars(Math.round((universeW * universeH) / 800));
-        }}
+        const newW = headerContainer.offsetWidth;
+            const newH = headerContainer.offsetHeight;
 
+            if (newW !== lastWidth) {{
+                universeW = newW;
+                universeH = newH;
+                universeCanvas.width = universeW * universeDpr;
+                universeCanvas.height = universeH * universeDpr;
+                universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
+                lastWidth = newW;
+        }}
+        }}
         function createStars(count) {{
             stars.length = 0;
             for (let i = 0; i < count; i++) {{
