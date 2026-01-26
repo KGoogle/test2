@@ -7,65 +7,27 @@ SCIENCE_FIELDS = ["천문·우주", "물리학", "화학", "생명과학"]
 def get_nasa_data():
     api_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
     url = f"https://api.nasa.gov/planetary/apod?api_key={api_key}"
-    
     try:
         response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"NASA API 에러: {response.status_code}")
-            return None
-    except Exception as e:
-        print(f"연결 에러: {e}")
+        if response.status_code == 200: return response.json()
         return None
+    except: return None
 
 def collect_test_data():
     all_data = {}
     for field in SCIENCE_FIELDS:
-        news_list = []
-        for i in range(1, 13):
-            news_list.append({
-                "title": f"[{field}] 뉴스 {i}",
-                "link": "#",
-                "date": "2026-01-26"
-            })
-        
-        papers_list = []
-        for i in range(1, 9):
-            papers_list.append({
-                "title": f"Research in {field} {i}",
-                "url": "#",
-                "authors": "Dr. Scientist",
-                "abstract": "연구 논문 요약 내용입니다."
-            })
-            
-        videos_list = []
-        for i in range(1, 7):
-            videos_list.append({
-                "title": f"{field} 영상 콘텐츠 {i}",
-                "link": "#",
-                "thumbnail": f"https://via.placeholder.com/320x180/111/eee?text={field}+{i}"
-            })
-
         all_data[field] = {
-            "news": news_list,
-            "papers": papers_list,
-            "videos": videos_list,
+            "news": [{"title": f"[{field}] 뉴스 {i}", "link": "#", "date": "2026-01-26"} for i in range(1, 13)],
+            "papers": [{"title": f"Research in {field} {i}", "url": "#", "authors": "Dr. Scientist", "abstract": "요약 내용입니다."} for i in range(1, 9)],
+            "videos": [{"title": f"{field} 영상 {i}", "link": "#", "thumbnail": f"https://via.placeholder.com/320x180/111/eee?text={field}+{i}"} for i in range(1, 7)],
             "data": f"{field} 핵심 지표 모니터링 중",
-            "events": [
-                {"date": "2026-1-16", "title": f"{field} 컨퍼런스"},
-                {"date": "2026-1-16", "title": f"{field} 성과 발표"}
-            ]
+            "events": [{"date": "2026-1-16", "title": f"{field} 컨퍼런스"}]
         }
     return all_data
 
 def generate_html(science_data, nasa_data):
-    full_payload = {
-        "science": science_data,
-        "nasa": nasa_data
-    }
+    full_payload = {"science": science_data, "nasa": nasa_data}
     json_data = json.dumps(full_payload, ensure_ascii=False)
-    
     field_buttons_html = "".join([f'<button class="tab-btn" onclick="showField(\'{f}\')">{f}</button>' for f in SCIENCE_FIELDS])
 
     return f"""
@@ -77,90 +39,36 @@ def generate_html(science_data, nasa_data):
     <title>Deep Space Science</title>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root {{
-            --bg: #000000;
-            --card-bg: #0a0a0a;
-            --text-main: #ffffff;
-            --text-sub: #888888;
-            --accent: #ffffff;
-            --border: #222222;
-        }}
+        :root {{ --bg: #000000; --card-bg: #0a0a0a; --text-main: #ffffff; --text-sub: #888888; --accent: #ffffff; --border: #222222; }}
         * {{ box-sizing: border-box; }}
-        body {{
-            background-color: var(--bg); color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0; padding: 0; line-height: 1.6;
-        }}
-
-        header {{
-            position: relative;
-            width: 100%;
-            height: 350px;
-            overflow: hidden;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }}
-        #universe {{
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 0;
-        }}
-        .header-content {{
-            position: relative;
-            z-index: 1;
-            padding: 20px;
-        }}
-        header h1 {{
-            margin: 0; font-size: 19px; color: #ffffff;
-            font-family: 'Gowun Batang', serif;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
-            word-break: keep-all; line-height: 1.8; font-weight: 400;
-        }}
-
+        body {{ background-color: var(--bg); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; line-height: 1.6; }}
+        header {{ position: relative; width: 100%; height: 350px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; text-align: center; }}
+        #universe {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }}
+        .header-content {{ position: relative; z-index: 1; padding: 20px; }}
+        header h1 {{ margin: 0; font-size: 19px; color: #ffffff; font-family: 'Gowun Batang', serif; text-shadow: 0 0 10px rgba(255,255,255,0.5); word-break: keep-all; line-height: 1.8; font-weight: 400; }}
         .container {{ max-width: 1100px; margin: 0 auto; padding: 40px 20px; min-height: 100vh; }}
-    
-        .tabs-field {{ 
-            display: flex; gap: 10px; margin-bottom: 30px; 
-            border-bottom: 1px solid var(--border); padding-bottom: 15px;
-            overflow-x: auto; justify-content: center;
-            scrollbar-width: none;
-        }}
+        .tabs-field {{ display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px; overflow-x: auto; justify-content: center; scrollbar-width: none; }}
         .tabs-field::-webkit-scrollbar {{ display: none; }}
-
-        .tab-btn {{ 
-            background: transparent; border: 1px solid var(--border); color: var(--text-sub); 
-            padding: 10px 25px; cursor: pointer; border-radius: 4px; font-weight: 500; 
-            transition: all 0.3s; white-space: nowrap;
-        }}
+        .tab-btn {{ background: transparent; border: 1px solid var(--border); color: var(--text-sub); padding: 10px 25px; cursor: pointer; border-radius: 4px; font-weight: 500; transition: all 0.3s; white-space: nowrap; }}
         .tab-btn.active {{ background: #ffffff; color: #000; border-color: #ffffff; font-weight: bold; }}
-        
         .sub-tabs {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 40px; flex-wrap: wrap; }}
         .sub-btn {{ background: none; border: none; color: #555; cursor: pointer; font-size: 0.9rem; font-weight: bold; padding: 5px 0; border-bottom: 2px solid transparent; }}
         .sub-btn.active {{ color: #fff; border-bottom-color: #fff; }}
-        
         .nasa-hero {{ margin-bottom: 40px; border-radius: 4px; overflow: hidden; background: #000; border: 1px solid var(--border); animation: fadeIn 0.8s; }}
         .nasa-img {{ width: 100%; height: auto; max-height: 700px; object-fit: contain; display: block; margin: 0 auto; }}
         .nasa-info {{ padding: 30px; }}
         .nasa-tag {{ border: 1px solid #fff; color: #fff; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; margin-bottom: 15px; display: inline-block; }}
         .nasa-title {{ font-size: 1.6rem; font-weight: bold; margin-bottom: 10px; font-family: 'Gowun Batang', serif; }}
         .nasa-desc {{ color: #bbb; font-size: 0.95rem; line-height: 1.8; text-align: justify; }}
-
         .card-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; animation: fadeIn 0.3s; }}
         .card {{ background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 25px; transition: all 0.2s; display: flex; flex-direction: column; text-decoration: none; color: inherit; }}
         .card:hover {{ border-color: #555; transform: translateY(-3px); }}
         .card-title {{ font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 12px; }}
         .card-meta {{ font-size: 0.8rem; color: #555; margin-top: auto; }}
-        
         .card-abstract {{ font-size: 0.85rem; color: #777; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }}
-        
         .video-thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 2px; margin-bottom: 12px; filter: brightness(0.8); }}
         .data-box {{ background: var(--card-bg); border: 1px solid var(--border); padding: 80px 20px; border-radius: 4px; text-align: center; }}
         .event-item {{ background: var(--card-bg); border-left: 3px solid #fff; margin-bottom: 12px; padding: 20px; border-radius: 2px; }}
-        
         @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     </style>
 </head>
@@ -187,18 +95,21 @@ def generate_html(science_data, nasa_data):
         let lastWidth = 0;
 
         function resizeUniverse() {{
-        const newW = headerContainer.offsetWidth;
-            const newH = headerContainer.offsetHeight;
+            const currentWidth = headerContainer.offsetWidth;
+            const currentHeight = headerContainer.offsetHeight;
 
-            if (newW !== lastWidth) {{
-                universeW = newW;
-                universeH = newH;
-                universeCanvas.width = universeW * universeDpr;
-                universeCanvas.height = universeH * universeDpr;
-                universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
-                lastWidth = newW;
+            universeW = currentWidth;
+            universeH = currentHeight;
+            universeCanvas.width = universeW * universeDpr;
+            universeCanvas.height = universeH * universeDpr;
+            universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
+
+            if (currentWidth !== lastWidth) {{
+                createStars(Math.round((universeW * universeH) / 800));
+                lastWidth = currentWidth;
+            }}
         }}
-        }}
+
         function createStars(count) {{
             stars.length = 0;
             for (let i = 0; i < count; i++) {{
@@ -229,12 +140,8 @@ def generate_html(science_data, nasa_data):
                 universeCtx.globalAlpha = baseAlpha * twinkleAlpha;
 
                 const gradient = universeCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-                const r = parseInt(s.c.slice(1, 3), 16);
-                const g = parseInt(s.c.slice(3, 5), 16);
-                const b = parseInt(s.c.slice(5, 7), 16);
-                
+                const r = parseInt(s.c.slice(1, 3), 16), g = parseInt(s.c.slice(3, 5), 16), b = parseInt(s.c.slice(5, 7), 16);
                 gradient.addColorStop(0, `rgba(${{r}}, ${{g}}, ${{b}}, 1)`);
-                gradient.addColorStop(0.5, `rgba(${{r}}, ${{g}}, ${{b}}, 0.5)`);
                 gradient.addColorStop(1, `rgba(${{r}}, ${{g}}, ${{b}}, 0)`);
                 
                 universeCtx.fillStyle = gradient;
@@ -272,10 +179,7 @@ def generate_html(science_data, nasa_data):
             let tabs = [];
             if (currentField === "천문·우주") tabs.push({{ id: 'apod', name: '오늘의 천문 사진' }});
             tabs.push({{ id: 'news', name: '뉴스' }}, {{ id: 'papers', name: '논문' }}, {{ id: 'comm', name: '콘텐츠' }}, {{ id: 'data', name: '데이터' }}, {{ id: 'events', name: '일정' }});
-
-            container.innerHTML = tabs.map(t => `
-                <button class="sub-btn ${{currentType === t.id ? 'active' : ''}}" onclick="showType('${{t.id}}')">${{t.name}}</button>
-            `).join('');
+            container.innerHTML = tabs.map(t => `<button class="sub-btn ${{currentType === t.id ? 'active' : ''}}" onclick="showType('${{t.id}}')">${{t.name}}</button>`).join('');
         }}
 
         function render() {{
@@ -283,21 +187,9 @@ def generate_html(science_data, nasa_data):
             const nasa = fullData.nasa;
             const container = document.getElementById('main-content');
             let html = '';
-
             if (currentType === 'apod') {{
                 if (nasa) {{
-                    html += `
-                    <div class="nasa-hero">
-                        <img src="${{nasa.hdurl || nasa.url}}" class="nasa-img" alt="NASA APOD">
-                        <div class="nasa-info">
-                            <span class="nasa-tag">NASA APOD</span>
-                            <div class="nasa-title">${{nasa.title}}</div>
-                            <p class="nasa-desc">${{nasa.explanation}}</p>
-                            <div style="font-size: 0.8rem; color: #555; margin-top:20px; border-top: 1px solid #222; padding-top: 15px;">
-                                <strong>Date:</strong> ${{nasa.date}} | <strong>Copyright:</strong> ${{nasa.copyright || 'Public Domain'}}
-                            </div>
-                        </div>
-                    </div>`;
+                    html += `<div class="nasa-hero"><img src="${{nasa.hdurl || nasa.url}}" class="nasa-img" alt="NASA APOD"><div class="nasa-info"><span class="nasa-tag">NASA APOD</span><div class="nasa-title">${{nasa.title}}</div><p class="nasa-desc">${{nasa.explanation}}</p></div></div>`;
                 }} else html += `<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>`;
             }} else if (currentType === 'news') {{
                 html += '<div class="card-grid">' + science.news.map(n => `<a href="${{n.link}}" class="card"><div class="card-title">${{n.title}}</div><div class="card-meta">${{n.date}}</div></a>`).join('') + '</div>';
@@ -312,7 +204,6 @@ def generate_html(science_data, nasa_data):
             }}
             container.innerHTML = html;
         }}
-
         window.onload = () => showField('천문·우주');
     </script>
 </body>
