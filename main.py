@@ -103,17 +103,17 @@ def generate_html(science_data, nasa_data):
         .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; }}
     
         .nasa-hero {{ margin-bottom: 40px; border-radius: 15px; overflow: hidden; background: #0a0a0a; border: 1px solid #333; animation: fadeIn 0.8s; }}
-        .nasa-img {{ width: 100%; height: auto; max-height: 600px; object-fit: cover; display: block; }}
+        .nasa-img {{ width: 100%; height: auto; max-height: 700px; object-fit: contain; display: block; margin: 0 auto; background: #000; }}
         .nasa-info {{ padding: 30px; }}
         .nasa-tag {{ background: #fff; color: #000; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px; display: inline-block; }}
         .nasa-title {{ font-size: 1.6rem; font-weight: bold; margin-bottom: 10px; font-family: 'Gowun Batang', serif; }}
-        .nasa-desc {{ color: #ccc; font-size: 0.95rem; line-height: 1.8; }}
+        .nasa-desc {{ color: #ccc; font-size: 0.95rem; line-height: 1.8; text-align: justify; }}
         
         .tabs-field {{ display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; overflow-x: auto; justify-content: center; }}
         .tab-btn {{ background: transparent; border: 1px solid var(--border); color: var(--text-sub); padding: 10px 25px; cursor: pointer; border-radius: 8px; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; white-space: nowrap; }}
         .tab-btn.active {{ background: var(--accent); color: #000; border-color: var(--accent); }}
         
-        .sub-tabs {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }}
+        .sub-tabs {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }}
         .sub-btn {{ background: none; border: none; color: #555; cursor: pointer; font-size: 0.9rem; font-weight: bold; padding: 5px 0; border-bottom: 2px solid transparent; }}
         .sub-btn.active {{ color: var(--accent); border-bottom-color: var(--accent); }}
         
@@ -122,7 +122,15 @@ def generate_html(science_data, nasa_data):
         .card:hover {{ transform: translateY(-3px); border-color: #555; }}
         .card-title {{ font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 10px; line-height: 1.4; }}
         .card-meta {{ font-size: 0.75rem; color: var(--text-sub); margin-top: auto; }}
-        .card-abstract {{ font-size: 0.85rem; color: #777; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }}
+        
+        .card-abstract {{ 
+            font-size: 0.85rem; color: #777; margin-bottom: 15px; 
+            display: -webkit-box; 
+            -webkit-line-clamp: 3; 
+            line-clamp: 3; 
+            -webkit-box-orient: vertical; 
+            overflow: hidden; 
+        }}
         
         .video-thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; margin-bottom: 12px; background: #222; }}
         .data-box {{ background: var(--card-bg); border: 1px dashed #444; padding: 80px 20px; border-radius: 15px; text-align: center; }}
@@ -141,13 +149,7 @@ def generate_html(science_data, nasa_data):
 
     <div class="container">
         <nav class="tabs-field">{field_buttons_html}</nav>
-        <nav class="sub-tabs">
-            <button class="sub-btn active" onclick="showType('news')">뉴스</button>
-            <button class="sub-btn" onclick="showType('papers')">논문</button>
-            <button class="sub-btn" onclick="showType('comm')">콘텐츠</button>
-            <button class="sub-btn" onclick="showType('data')">데이터</button>
-            <button class="sub-btn" onclick="showType('events')">일정</button>
-        </nav>
+        <nav id="sub-tabs-container" class="sub-tabs"></nav>
 
         <main id="main-content"></main>
     </div>
@@ -158,6 +160,7 @@ def generate_html(science_data, nasa_data):
         const headerContainer = document.getElementById('header-container');
         let universeW, universeH, universeDpr = Math.max(1, window.devicePixelRatio || 1);
         let stars = [];
+
         function resizeUniverse() {{
             universeW = headerContainer.offsetWidth; universeH = headerContainer.offsetHeight;
             universeCanvas.width = universeW * universeDpr; universeCanvas.height = universeH * universeDpr;
@@ -187,18 +190,50 @@ def generate_html(science_data, nasa_data):
 
         const fullData = {json_data};
         let currentField = "천문·우주";
-        let currentType = "news";
+        let currentType = "apod";
 
         function showField(f) {{
             currentField = f;
+            currentType = (f === "천문·우주") ? "apod" : "news";
+            
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText === f));
+            renderSubTabs();
             render();
         }}
 
         function showType(t) {{
             currentType = t;
-            document.querySelectorAll('.sub-btn').forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(t)));
+            const allSubBtns = document.querySelectorAll('.sub-btn');
+            allSubBtns.forEach(b => {{
+                const onClickAttr = b.getAttribute('onclick');
+                if (onClickAttr && onClickAttr.includes(`'${{t}}'`)) {{
+                    b.classList.add('active');
+                }} else {{
+                    b.classList.remove('active');
+                }}
+            }});
             render();
+        }}
+
+        function renderSubTabs() {{
+            const container = document.getElementById('sub-tabs-container');
+            let tabs = [];
+            
+            if (currentField === "천문·우주") {{
+                tabs.push({{ id: 'apod', name: ' 천문 사진' }});
+            }}
+            
+            tabs.push(
+                {{ id: 'news', name: '뉴스' }},
+                {{ id: 'papers', name: '논문' }},
+                {{ id: 'comm', name: '콘텐츠' }},
+                {{ id: 'data', name: '데이터' }},
+                {{ id: 'events', name: '일정' }}
+            );
+
+            container.innerHTML = tabs.map(t => `
+                <button class="sub-btn ${{currentType === t.id ? 'active' : ''}}" onclick="showType('${{t.id}}')">${{t.name}}</button>
+            `).join('');
         }}
 
         function render() {{
@@ -207,23 +242,25 @@ def generate_html(science_data, nasa_data):
             const container = document.getElementById('main-content');
             let html = '';
 
-            if (currentField === "천문·우주" && currentType === "news" && nasa) {{
-                html += `
-                <div class="nasa-hero">
-                    <img src="${{nasa.hdurl || nasa.url}}" class="nasa-img">
-                    <div class="nasa-info">
-                        <span class="nasa-tag">NASA APOD TODAY</span>
-                        <div class="nasa-title">${{nasa.title}}</div>
-                        <p class="nasa-desc">${{nasa.explanation}}</p>
-                        <div style="font-size: 0.8rem; color: #555; margin-top:15px;">
-                            Copyright: ${{nasa.copyright || 'NASA'}} | Date: ${{nasa.date}}
+            if (currentType === 'apod') {{
+                if (nasa) {{
+                    html += `
+                    <div class="nasa-hero">
+                        <img src="${{nasa.hdurl || nasa.url}}" class="nasa-img" alt="NASA APOD">
+                        <div class="nasa-info">
+                            <span class="nasa-tag">NASA APOD TODAY</span>
+                            <div class="nasa-title">${{nasa.title}}</div>
+                            <p class="nasa-desc">${{nasa.explanation}}</p>
+                            <div style="font-size: 0.8rem; color: #555; margin-top:20px; border-top: 1px solid #333; padding-top: 15px;">
+                                <strong>Copyright:</strong> ${{nasa.copyright || 'Public Domain'}} | <strong>Date:</strong> ${{nasa.date}}
+                            </div>
                         </div>
                     </div>
-                </div>
-                `;
-            }}
-
-            if (currentType === 'news') {{
+                    `;
+                }} else {{
+                    html += `<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>`;
+                }}
+            }} else if (currentType === 'news') {{
                 html += '<div class="card-grid">' + science.news.map(n => `<a href="${{n.link}}" class="card"><div class="card-title">${{n.title}}</div><div class="card-meta">${{n.date}}</div></a>`).join('') + '</div>';
             }} else if (currentType === 'papers') {{
                 html += '<div class="card-grid">' + science.papers.map(p => `<a href="${{p.url}}" class="card"><div class="card-title">${{p.title}}</div><div class="card-abstract">${{p.abstract}}</div><div class="card-meta">${{p.authors}}</div></a>`).join('') + '</div>';
