@@ -25,7 +25,7 @@ def collect_test_data():
         news_list = []
         for i in range(1, 13):
             news_list.append({
-                "title": f"[{field}] 최신 뉴스 {i}",
+                "title": f"[{field}] 뉴스 {i}",
                 "link": "#",
                 "date": "2026-01-26"
             })
@@ -51,7 +51,7 @@ def collect_test_data():
             "news": news_list,
             "papers": papers_list,
             "videos": videos_list,
-            "data": f"{field} 핵심 지표 모니터링 중",
+            "data": f"{field} 지표 모니터링 중",
             "events": [
                 {"date": "2025-10-10", "title": f"{field} 컨퍼런스"},
                 {"date": "2025-11-20", "title": f"{field} 성과 발표"}
@@ -74,13 +74,14 @@ def generate_html(science_data, nasa_data):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>과학 정보 포털</title>
+    <title>과학 정보</title>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {{
             --bg: #111111; --card-bg: #1c1c1c; --text-main: #f0f0f0;
             --text-sub: #888888; --accent: #ffffff; --border: #333;
         }}
+        * {{ box-sizing: border-box; }}
         body {{
             background-color: var(--bg); color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -102,21 +103,37 @@ def generate_html(science_data, nasa_data):
         
         .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; }}
     
-        .nasa-hero {{ margin-bottom: 40px; border-radius: 15px; overflow: hidden; background: #0a0a0a; border: 1px solid #333; animation: fadeIn 0.8s; }}
-        .nasa-img {{ width: 100%; height: auto; max-height: 700px; object-fit: contain; display: block; margin: 0 auto; background: #000; }}
-        .nasa-info {{ padding: 30px; }}
-        .nasa-tag {{ background: #fff; color: #000; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px; display: inline-block; }}
-        .nasa-title {{ font-size: 1.6rem; font-weight: bold; margin-bottom: 10px; font-family: 'Gowun Batang', serif; }}
-        .nasa-desc {{ color: #ccc; font-size: 0.95rem; line-height: 1.8; text-align: justify; }}
-        
-        .tabs-field {{ display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; overflow-x: auto; justify-content: center; }}
-        .tab-btn {{ background: transparent; border: 1px solid var(--border); color: var(--text-sub); padding: 10px 25px; cursor: pointer; border-radius: 8px; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; white-space: nowrap; }}
+        .tabs-field {{ 
+            display: flex; 
+            gap: 12px; 
+            margin: 0 auto 20px auto; 
+            border-bottom: 1px solid var(--border); 
+            padding-bottom: 15px; 
+            overflow-x: auto; 
+            justify-content: center;
+            width: 100%;
+            scrollbar-width: none;
+        }}
+        .tabs-field::-webkit-scrollbar {{ display: none; }}
+
+        .tab-btn {{ 
+            background: transparent; border: 1px solid var(--border); color: var(--text-sub); 
+            padding: 10px 25px; cursor: pointer; border-radius: 8px; font-weight: 600; 
+            font-size: 0.95rem; transition: all 0.2s; white-space: nowrap;
+        }}
         .tab-btn.active {{ background: var(--accent); color: #000; border-color: var(--accent); }}
         
         .sub-tabs {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }}
         .sub-btn {{ background: none; border: none; color: #555; cursor: pointer; font-size: 0.9rem; font-weight: bold; padding: 5px 0; border-bottom: 2px solid transparent; }}
         .sub-btn.active {{ color: var(--accent); border-bottom-color: var(--accent); }}
         
+        .nasa-hero {{ margin-bottom: 40px; border-radius: 15px; overflow: hidden; background: #0a0a0a; border: 1px solid #333; animation: fadeIn 0.8s; }}
+        .nasa-img {{ width: 100%; height: auto; max-height: 700px; object-fit: contain; display: block; margin: 0 auto; background: #000; }}
+        .nasa-info {{ padding: 30px; }}
+        .nasa-tag {{ background: #fff; color: #000; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px; display: inline-block; }}
+        .nasa-title {{ font-size: 1.6rem; font-weight: bold; margin-bottom: 10px; font-family: 'Gowun Batang', serif; }}
+        .nasa-desc {{ color: #ccc; font-size: 0.95rem; line-height: 1.8; text-align: justify; }}
+
         .card-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; animation: fadeIn 0.3s; }}
         .card {{ background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; transition: transform 0.2s; display: flex; flex-direction: column; text-decoration: none; color: inherit; }}
         .card:hover {{ transform: translateY(-3px); border-color: #555; }}
@@ -125,11 +142,7 @@ def generate_html(science_data, nasa_data):
         
         .card-abstract {{ 
             font-size: 0.85rem; color: #777; margin-bottom: 15px; 
-            display: -webkit-box; 
-            -webkit-line-clamp: 3; 
-            line-clamp: 3; 
-            -webkit-box-orient: vertical; 
-            overflow: hidden; 
+            display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; 
         }}
         
         .video-thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; margin-bottom: 12px; background: #222; }}
@@ -148,7 +161,7 @@ def generate_html(science_data, nasa_data):
     </header>
 
     <div class="container">
-        <nav class="tabs-field">{field_buttons_html}</nav>
+        <nav class="tabs-field" id="main-tabs">{field_buttons_html}</nav>
         <nav id="sub-tabs-container" class="sub-tabs"></nav>
 
         <main id="main-content"></main>
@@ -203,14 +216,10 @@ def generate_html(science_data, nasa_data):
 
         function showType(t) {{
             currentType = t;
-            const allSubBtns = document.querySelectorAll('.sub-btn');
-            allSubBtns.forEach(b => {{
-                const onClickAttr = b.getAttribute('onclick');
-                if (onClickAttr && onClickAttr.includes(`'${{t}}'`)) {{
-                    b.classList.add('active');
-                }} else {{
-                    b.classList.remove('active');
-                }}
+            document.querySelectorAll('.sub-btn').forEach(b => {{
+                const onClickStr = b.getAttribute('onclick');
+                if (onClickStr.includes(`'${{t}}'`)) b.classList.add('active');
+                else b.classList.remove('active');
             }});
             render();
         }}
@@ -218,11 +227,9 @@ def generate_html(science_data, nasa_data):
         function renderSubTabs() {{
             const container = document.getElementById('sub-tabs-container');
             let tabs = [];
-            
             if (currentField === "천문·우주") {{
-                tabs.push({{ id: 'apod', name: ' 천문 사진' }});
+                tabs.push({{ id: 'apod', name: '오늘의 천문 사진' }});
             }}
-            
             tabs.push(
                 {{ id: 'news', name: '뉴스' }},
                 {{ id: 'papers', name: '논문' }},
