@@ -74,7 +74,7 @@ def generate_html(science_data, nasa_data):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>과학 정보 포털</title>
+    <title>과학 정보</title>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {{
@@ -110,7 +110,7 @@ def generate_html(science_data, nasa_data):
             border-bottom: 1px solid var(--border); 
             padding: 0 15px 15px 15px; 
             overflow-x: auto; 
-            justify-content: flex-start; /* 기본은 왼쪽 정렬 (잘림 방지) */
+            justify-content: flex-start;
             scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
         }}
@@ -126,7 +126,7 @@ def generate_html(science_data, nasa_data):
             background: transparent; border: 1px solid var(--border); color: var(--text-sub); 
             padding: 10px 22px; cursor: pointer; border-radius: 8px; font-weight: 600; 
             font-size: 0.95rem; transition: all 0.2s; white-space: nowrap;
-            flex-shrink: 0; /* 버튼 형태 보존 */
+            flex-shrink: 0;
         }}
         .tab-btn.active {{ background: var(--accent); color: #000; border-color: var(--accent); }}
         
@@ -179,33 +179,61 @@ def generate_html(science_data, nasa_data):
         const headerContainer = document.getElementById('header-container');
         let universeW, universeH, universeDpr = Math.max(1, window.devicePixelRatio || 1);
         let stars = [];
+        let lastWidth = 0;
 
         function resizeUniverse() {{
-            universeW = headerContainer.offsetWidth; universeH = headerContainer.offsetHeight;
-            universeCanvas.width = universeW * universeDpr; universeCanvas.height = universeH * universeDpr;
-            universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
-            createStars(Math.round((universeW * universeH) / 3000)); 
+            const currentWidth = headerContainer.offsetWidth;
+            const currentHeight = headerContainer.offsetHeight;
+
+            if (currentWidth !== lastWidth) {{
+                universeW = currentWidth; 
+                universeH = currentHeight;
+                universeCanvas.width = universeW * universeDpr; 
+                universeCanvas.height = universeH * universeDpr;
+                universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
+                
+                createStars(Math.round((universeW * universeH) / 3000)); 
+                lastWidth = currentWidth;
+            }}
         }}
+
         function createStars(count) {{
             stars = [];
             for (let i = 0; i < count; i++) {{
                 const colorRand = Math.random();
                 let color = colorRand < 0.8 ? '#ffffff' : colorRand < 0.9 ? '#aabfff' : '#ffd2a1';
-                stars.push({{ x: Math.random() * universeW, y: Math.random() * universeH, r: Math.pow(Math.random(), 3) * 2 + 0.5, tw: Math.random() * Math.PI * 2, twSpeed: Math.random() * 0.005 + 0.002, c: color }});
+                stars.push({{ 
+                    x: Math.random() * universeW, 
+                    y: Math.random() * universeH, 
+                    r: Math.pow(Math.random(), 3) * 2 + 0.5, 
+                    tw: Math.random() * Math.PI * 2, 
+                    twSpeed: Math.random() * 0.005 + 0.002, 
+                    c: color 
+                }});
             }}
         }}
+
         function drawUniverse() {{
             universeCtx.clearRect(0, 0, universeW, universeH);
             stars.forEach(s => {{
-                s.tw += s.twSpeed; const twinkleAlpha = 0.3 + Math.sin(s.tw) * 0.4;
+                s.tw += s.twSpeed; 
+                const twinkleAlpha = 0.3 + Math.sin(s.tw) * 0.4;
                 const grad = universeCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-                grad.addColorStop(0, s.c); grad.addColorStop(1, 'transparent');
-                universeCtx.globalAlpha = twinkleAlpha; universeCtx.fillStyle = grad;
-                universeCtx.beginPath(); universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); universeCtx.fill();
+                grad.addColorStop(0, s.c); 
+                grad.addColorStop(1, 'transparent');
+                universeCtx.globalAlpha = twinkleAlpha; 
+                universeCtx.fillStyle = grad;
+                universeCtx.beginPath(); 
+                universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); 
+                universeCtx.fill();
             }});
             requestAnimationFrame(drawUniverse);
         }}
-        window.addEventListener('resize', resizeUniverse); resizeUniverse(); drawUniverse();
+
+        window.addEventListener('resize', resizeUniverse); 
+        
+        resizeUniverse(); 
+        drawUniverse();
 
         const fullData = {json_data};
         let currentField = "천문·우주";
