@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -87,6 +88,12 @@
 
         .nasa-title { font-size: 1.8rem; font-weight: bold; margin-bottom: 20px; font-family: 'Gowun Batang', serif; color: #fff; }
         .nasa-desc { color: #bbbbbb; font-size: 1rem; line-height: 1.8; text-align: justify; letter-spacing: -0.01em; margin-bottom: 25px; }
+        
+        .nasa-credit { 
+            font-size: 0.85rem; color: #666; margin-top: 20px; 
+            padding-top: 20px; border-top: 1px solid #222; 
+            letter-spacing: 0.02em; line-height: 1.5;
+        }
 
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; animation: fadeIn 0.4s; }
         .card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 25px; transition: all 0.3s; display: flex; flex-direction: column; text-decoration: none; color: inherit; }
@@ -191,7 +198,7 @@
             const container = document.getElementById('sub-tabs-container');
             let tabs = [];
             if (currentField === "천문·우주") tabs.push({ id: 'apod', name: '오늘의 천문 사진' });
-            tabs.push({ id: 'news', name: '뉴스' }, { id: 'papers', name: '논문' }, { id: 'comm', name: '콘텐츠' }, { id: 'data', name: '데이터' }, { id: 'events', name: '일정' });
+            tabs.push({ id: 'news', name: '뉴스' }, { id: 'papers', name: '논문' }, { id: 'comm', name: '콘텐츠' }, { id: 'data', name: '데이터' });
             container.innerHTML = tabs.map(t => `<button class="sub-btn ${currentType === t.id ? 'active' : ''}" onclick="showType('${t.id}')">${t.name}</button>`).join('');
         }
 
@@ -203,6 +210,9 @@
 
             if (currentType === 'apod') {
                 const apodOriginalUrl = "https://apod.nasa.gov/apod/astropix.html";
+                const copyright = nasa?.copyright ? nasa.copyright.replace(/\n/g, ' ') : 'NASA / Public Domain';
+                const date = nasa?.date || '';
+                
                 html = nasa ? `
                     <div class="nasa-hero">
                         <img src="${nasa.url}" class="nasa-img">
@@ -210,12 +220,16 @@
                             <div class="nasa-header-row">
                                 <a href="${apodOriginalUrl}" target="_blank" class="nasa-tag">NASA APOD TODAY ↗</a>
                                 <div class="nasa-actions">
-                                    <a href="${nasa.hdurl || nasa.url}" target="_blank" class="btn-mini">HD</a>
-                                    <a href="${apodOriginalUrl}" target="_blank" class="btn-mini">NASA</a>
+                                    <a href="${nasa.hdurl || nasa.url}" target="_blank" class="btn-mini">HD 고화질</a>
+                                    <a href="${apodOriginalUrl}" target="_blank" class="btn-mini">NASA 공식 사이트</a>
                                 </div>
                             </div>
                             <div class="nasa-title">${nasa.title}</div>
                             <p class="nasa-desc">${nasa.explanation}</p>
+                            
+                            <div class="nasa-credit">
+                                Copyright: ${copyright}; Text: ${copyright} | Date: ${date}
+                            </div>
                         </div>
                     </div>` : '<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>';
             } 
@@ -240,9 +254,6 @@
             else if (currentType === 'data') {
                 html = `<div class="data-box"><div style="font-size:1.8rem; font-weight:bold; color:var(--accent); letter-spacing:2px;">${science.data}</div></div>`;
             } 
-            else if (currentType === 'events') {
-                html = '<div>' + science.events.map(e => `<div class="event-item"><div style="color:#666; font-size:0.85rem; margin-bottom:5px; font-weight:bold;">${e.date}</div><div style="font-size:1.1rem; color:#fff;">${e.title}</div></div>`).join('') + '</div>';
-            }
             container.innerHTML = html;
         }
 
