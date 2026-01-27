@@ -1,74 +1,4 @@
-import json
-import os
-import requests
 
-SCIENCE_FIELDS = ["천문·우주", "물리학", "화학", "생명과학"]
-
-def get_nasa_data():
-    api_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-    url = f"https://api.nasa.gov/planetary/apod?api_key={api_key}"
-    
-    try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"NASA API 에러: {response.status_code}")
-            return None
-    except Exception as e:
-        print(f"연결 에러: {e}")
-        return None
-
-def collect_test_data():
-    all_data = {}
-    for field in SCIENCE_FIELDS:
-        news_list = []
-        for i in range(1, 13):
-            news_list.append({
-                "title": f"[{field}] 뉴스 {i}",
-                "link": "#",
-                "date": "2026-01-26"
-            })
-        
-        papers_list = []
-        for i in range(1, 9):
-            papers_list.append({
-                "title": f"Research in {field} {i}",
-                "url": "#",
-                "authors": "Dr. Scientist",
-                "abstract": "연구 논문 요약 내용입니다."
-            })
-            
-        videos_list = []
-        for i in range(1, 7):
-            videos_list.append({
-                "title": f"{field} 영상 콘텐츠 {i}",
-                "link": "#",
-                "thumbnail": f"https://via.placeholder.com/320x180/000/fff?text={field}+{i}"
-            })
-
-        all_data[field] = {
-            "news": news_list,
-            "papers": papers_list,
-            "videos": videos_list,
-            "data": f"{field} 핵심 지표 모니터링 중",
-            "events": [
-                {"date": "2026-1-16", "title": f"{field} 컨퍼런스"},
-                {"date": "2026-1-16", "title": f"{field} 성과 발표"}
-            ]
-        }
-    return all_data
-
-def generate_html(science_data, nasa_data):
-    full_payload = {
-        "science": science_data,
-        "nasa": nasa_data
-    }
-    json_data = json.dumps(full_payload, ensure_ascii=False)
-    
-    field_buttons_html = "".join([f'<button class="tab-btn" onclick="showField(\'{f}\')">{f}</button>' for f in SCIENCE_FIELDS])
-
-    return f"""
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -77,37 +7,37 @@ def generate_html(science_data, nasa_data):
     <title>과학 정보</title>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root {{
+        :root {
             --bg: #000000; 
             --card-bg: #0a0a0a; 
             --text-main: #ffffff;
             --text-sub: #aaaaaa; 
             --accent: #ffffff; 
             --border: #222222;
-        }}
-        * {{ box-sizing: border-box; }}
-        body {{
+        }
+        * { box-sizing: border-box; }
+        body {
             background-color: var(--bg); color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0; padding: 0; line-height: 1.6;
             overflow-x: hidden;
-        }}
-        header {{ 
+        }
+        header { 
             position: relative; text-align: center; padding: 80px 20px;
             overflow: hidden; background: #000;
-        }}
-        #universe {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; display: block; }}
-        .header-content {{ position: relative; z-index: 1; pointer-events: none; }}
-        header h1 {{
+        }
+        #universe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+        .header-content { position: relative; z-index: 1; pointer-events: none; }
+        header h1 {
             margin: 0; font-size: 19px; color: #ffffff;
             font-family: 'Gowun Batang', serif;
             text-shadow: 0 0 10px rgba(255,255,255,0.3);
             word-break: keep-all; line-height: 1.8; font-weight: 400;
-        }}
+        }
         
-        .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; position: relative; z-index: 1; }}
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; position: relative; z-index: 1; }
     
-        .tabs-field {{ 
+        .tabs-field { 
             display: flex; 
             gap: 10px; 
             margin: 0 auto 20px auto; 
@@ -117,48 +47,71 @@ def generate_html(science_data, nasa_data):
             justify-content: flex-start;
             scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
-        }}
-        .tabs-field::-webkit-scrollbar {{ display: none; }}
+        }
+        .tabs-field::-webkit-scrollbar { display: none; }
 
-        @media (min-width: 600px) {{
-            .tabs-field {{ justify-content: center; }}
-        }}
+        @media (min-width: 600px) {
+            .tabs-field { justify-content: center; }
+        }
 
-        .tab-btn {{ 
+        .tab-btn { 
             background: transparent; border: 1px solid var(--border); color: var(--text-sub); 
             padding: 10px 24px; cursor: pointer; border-radius: 4px; font-weight: 500; 
             font-size: 0.95rem; transition: all 0.3s; white-space: nowrap;
             flex-shrink: 0;
-        }}
-        .tab-btn.active {{ background: #ffffff; color: #000000; border-color: #ffffff; font-weight: bold; }}
+        }
+        .tab-btn.active { background: #ffffff; color: #000000; border-color: #ffffff; font-weight: bold; }
         
-        .sub-tabs {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }}
-        .sub-btn {{ background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; font-weight: bold; padding: 5px 0; border-bottom: 2px solid transparent; transition: 0.3s; }}
-        .sub-btn.active {{ color: var(--accent); border-bottom-color: var(--accent); }}
+        .sub-tabs { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+        .sub-btn { background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; font-weight: bold; padding: 5px 0; border-bottom: 2px solid transparent; transition: 0.3s; }
+        .sub-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
         
-        .nasa-hero {{ margin-bottom: 40px; border-radius: 4px; overflow: hidden; background: #000000; border: 1px solid var(--border); animation: fadeIn 1s; }}
-        .nasa-img {{ width: 100%; height: auto; max-height: 750px; object-fit: contain; display: block; margin: 0 auto; background: #000; }}
-        .nasa-info {{ padding: 40px; border-top: 1px solid var(--border); }}
-        .nasa-tag {{ background: #fff; color: #000; padding: 3px 10px; border-radius: 2px; font-size: 0.7rem; font-weight: 800; margin-bottom: 20px; display: inline-block; text-transform: uppercase; letter-spacing: 1px; }}
-        .nasa-title {{ font-size: 1.8rem; font-weight: bold; margin-bottom: 15px; font-family: 'Gowun Batang', serif; color: #fff; }}
-        .nasa-desc {{ color: #bbbbbb; font-size: 1rem; line-height: 1.8; text-align: justify; letter-spacing: -0.01em; }}
+        .nasa-hero { margin-bottom: 40px; border-radius: 4px; overflow: hidden; background: #000000; border: 1px solid var(--border); animation: fadeIn 1s; }
+        .nasa-img { width: 100%; height: auto; max-height: 750px; object-fit: contain; display: block; margin: 0 auto; background: #000; }
+        .nasa-info { padding: 40px; border-top: 1px solid var(--border); }
+        
+        .nasa-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .nasa-tag { 
+            background: #fff; color: #000; padding: 5px 12px; border-radius: 2px; 
+            font-size: 0.75rem; font-weight: 800; text-transform: uppercase; 
+            letter-spacing: 1px; text-decoration: none; transition: 0.3s;
+        }
+        .nasa-tag:hover { background: #ccc; }
+        
+        .nasa-actions { display: flex; gap: 8px; }
+        .btn-mini { 
+            border: 1px solid #444; color: #888; padding: 4px 12px; 
+            text-decoration: none; font-size: 0.7rem; border-radius: 2px; 
+            transition: 0.3s; text-transform: uppercase; font-weight: bold;
+        }
+        .btn-mini:hover { border-color: #fff; color: #fff; }
 
-        .card-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; animation: fadeIn 0.4s; }}
-        .card {{ background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 25px; transition: all 0.3s; display: flex; flex-direction: column; text-decoration: none; color: inherit; }}
-        .card:hover {{ border-color: #ffffff; background-color: #111111; }}
-        .card-title {{ font-size: 1.1rem; font-weight: 600; color: #ffffff; margin-bottom: 12px; line-height: 1.4; }}
-        .card-meta {{ font-size: 0.8rem; color: #666; margin-top: auto; letter-spacing: 0.05em; }}
+        .nasa-title { font-size: 1.8rem; font-weight: bold; margin-bottom: 20px; font-family: 'Gowun Batang', serif; color: #fff; }
+        .nasa-desc { color: #bbbbbb; font-size: 1rem; line-height: 1.8; text-align: justify; letter-spacing: -0.01em; margin-bottom: 25px; }
         
-        .card-abstract {{ 
+        .nasa-credit { 
+            font-size: 0.85rem; color: #666; margin-top: 20px; 
+            padding-top: 20px; border-top: 1px solid #222; 
+            letter-spacing: 0.02em; line-height: 1.5;
+        }
+
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; animation: fadeIn 0.4s; }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 25px; transition: all 0.3s; display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+        .card:hover { border-color: #ffffff; background-color: #111111; }
+        .ai-tag { font-size: 10px; color: #888; border: 1px solid #333; padding: 2px 8px; border-radius: 12px; margin-right: 5px; text-transform: uppercase; display: inline-block; margin-bottom: 10px; }
+        .card-title { font-size: 1.1rem; font-weight: 600; color: #ffffff; margin-bottom: 12px; line-height: 1.4; }
+        .card-meta { font-size: 0.8rem; color: #666; margin-top: auto; letter-spacing: 0.05em; }
+        
+        .card-abstract { 
             font-size: 0.9rem; color: #888; margin-bottom: 15px; 
             display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; 
-        }}
+        }
         
-        .video-thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 2px; margin-bottom: 15px; background: #111; filter: grayscale(20%); }}
-        .data-box {{ background: var(--card-bg); border: 1px solid var(--border); padding: 100px 20px; border-radius: 4px; text-align: center; }}
-        .event-item {{ background: var(--card-bg); border: 1px solid var(--border); border-left: 4px solid #fff; margin-bottom: 15px; padding: 25px; border-radius: 2px; }}
+        .video-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 2px; margin-bottom: 15px; background: #111; filter: grayscale(20%); }
+        .data-box { background: var(--card-bg); border: 1px solid var(--border); padding: 100px 20px; border-radius: 4px; text-align: center; }
+        .event-item { background: var(--card-bg); border: 1px solid var(--border); border-left: 4px solid #fff; margin-bottom: 15px; padding: 25px; border-radius: 2px; }
         
-        @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(15px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -170,7 +123,7 @@ def generate_html(science_data, nasa_data):
     </header>
 
     <div class="container">
-        <nav class="tabs-field">{field_buttons_html}</nav>
+        <nav class="tabs-field"><button class="tab-btn" onclick="showField('천문·우주')">천문·우주</button><button class="tab-btn" onclick="showField('물리학')">물리학</button><button class="tab-btn" onclick="showField('화학')">화학</button><button class="tab-btn" onclick="showField('생명과학')">생명과학</button><button class="tab-btn" onclick="showField('기타')">기타</button></nav>
         <nav id="sub-tabs-container" class="sub-tabs"></nav>
         <main id="main-content"></main>
     </div>
@@ -183,159 +136,129 @@ def generate_html(science_data, nasa_data):
         let stars = [];
         let lastWidth = 0;
 
-        function resizeUniverse() {{
+        function resizeUniverse() {
             const currentWidth = headerContainer.offsetWidth;
             const currentHeight = headerContainer.offsetHeight;
-
-            if (currentWidth !== lastWidth) {{
+            if (currentWidth !== lastWidth) {
                 universeW = currentWidth; 
                 universeH = currentHeight;
                 universeCanvas.width = universeW * universeDpr; 
                 universeCanvas.height = universeH * universeDpr;
                 universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
-                
                 createStars(Math.round((universeW * universeH) / 800)); 
                 lastWidth = currentWidth;
-            }}
-        }}
+            }
+        }
 
-        function createStars(count) {{
+        function createStars(count) {
             stars = [];
-            for (let i = 0; i < count; i++) {{
+            for (let i = 0; i < count; i++) {
                 const colorRand = Math.random();
-                let color;
-                if (colorRand < 0.7) {{
-                    color = '#ffffff';
-                }} else if (colorRand < 0.82) {{
-                    color = '#aabfff';
-                }} else if (colorRand < 0.94) {{
-                    color = '#ffd2a1';
-                }} else {{
-                    color = '#ffcc6f';
-                }}
+                let color = colorRand < 0.7 ? '#ffffff' : colorRand < 0.82 ? '#aabfff' : colorRand < 0.94 ? '#ffd2a1' : '#ffcc6f';
+                stars.push({ x: Math.random() * universeW, y: Math.random() * universeH, r: Math.pow(Math.random(), 3) * 1.8 + 0.2, tw: Math.random() * Math.PI * 2, twSpeed: Math.random() * 0.01 + 0.005, c: color });
+            }
+        }
 
-                stars.push({{ 
-                    x: Math.random() * universeW, 
-                    y: Math.random() * universeH, 
-                    r: Math.pow(Math.random(), 3) * 1.8 + 0.2, 
-                    tw: Math.random() * Math.PI * 2, 
-                    twSpeed: Math.random() * 0.01 + 0.005, 
-                    c: color 
-                }});
-            }}
-        }}
-
-        function drawUniverse() {{
+        function drawUniverse() {
             universeCtx.clearRect(0, 0, universeW, universeH);
-
-            stars.forEach(s => {{
+            stars.forEach(s => {
                 s.tw += s.twSpeed; 
-
                 const baseAlpha = (s.r / 2.0) * 0.7 + 0.3;
                 const twinkleAlpha = 0.5 + Math.sin(s.tw) * 0.5;
                 universeCtx.globalAlpha = baseAlpha * twinkleAlpha;
-
                 const gradient = universeCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
                 const starColorHex = s.c.substring(1);
-                const r = parseInt(starColorHex.slice(0, 2), 16);
-                const g = parseInt(starColorHex.slice(2, 4), 16);
-                const b = parseInt(starColorHex.slice(4, 6), 16);
-                
-                gradient.addColorStop(0, `rgba(${{r}}, ${{g}}, ${{b}}, 1)`);
-                gradient.addColorStop(0.5, `rgba(${{r}}, ${{g}}, ${{b}}, 0.5)`);
-                gradient.addColorStop(1, `rgba(${{r}}, ${{g}}, ${{b}}, 0)`);
-                
+                const r = parseInt(starColorHex.slice(0, 2), 16), g = parseInt(starColorHex.slice(2, 4), 16), b = parseInt(starColorHex.slice(4, 6), 16);
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
                 universeCtx.fillStyle = gradient;
-                universeCtx.beginPath(); 
-                universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); 
-                universeCtx.fill();
-            }});
-            
+                universeCtx.beginPath(); universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); universeCtx.fill();
+            });
             universeCtx.globalAlpha = 1;
             requestAnimationFrame(drawUniverse);
-        }}
+        }
 
         window.addEventListener('resize', resizeUniverse); 
-        
-        resizeUniverse(); 
-        drawUniverse();
+        resizeUniverse(); drawUniverse();
 
-        const fullData = {json_data};
+        const fullData = {"science": {"천문·우주": {"news": [], "papers": [{"title": "천문·우주 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "천문·우주 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "천문·우주 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주"}], "data": "천문·우주 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "천문·우주 학술 세미나"}]}, "물리학": {"news": [], "papers": [{"title": "물리학 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "물리학 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "물리학 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학"}], "data": "물리학 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "물리학 학술 세미나"}]}, "화학": {"news": [], "papers": [{"title": "화학 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "화학 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "화학 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학"}], "data": "화학 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "화학 학술 세미나"}]}, "생명과학": {"news": [], "papers": [{"title": "생명과학 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "생명과학 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "생명과학 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학"}], "data": "생명과학 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "생명과학 학술 세미나"}]}, "기타": {"news": [{"title": "제임스 웹, 초기 우주의 거대 블랙홀 발견", "desc": "우주 탄생 초기에 형성된 거대 질량 블랙홀의 기원을 연구합니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "양자 컴퓨터를 활용한 단백질 구조 예측", "desc": "물리학의 양자 컴퓨팅 기술을 생명공학에 적용합니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "차세대 전고체 배터리를 위한 신소재 화학 증착", "desc": "안전성이 높은 배터리 구현을 위한 새로운 화학 공법입니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "크리스퍼 유전자 가위의 부작용 억제 기전 확인", "desc": "유전자 편집 시 발생하는 오작동을 줄이는 돌파구입니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "AI 기반 기후 예측 모델의 정확도 향상", "desc": "딥러닝 기술을 활용해 기후 변화를 예측합니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}], "papers": [{"title": "기타 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "기타 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "기타 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=기타"}], "data": "기타 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "기타 학술 세미나"}]}}, "nasa": {"copyright": "\nWłodzimierz Bubak; \nText: Ogetay Kayali \n(MTU) \n", "date": "2026-01-27", "explanation": "Rising over a frozen valley in the Tatra Mountains, the familiar stars and nebulas of Orion dominate this wide-field nightscape.  The featured deep photo was taken in southern Poland's highest mountain range last month, where dark skies and alpine terrain combined to reveal both Earth's rugged beauty and the structure of our galaxy.  Above the snowy mountains, Orion's bright belt stars anchor a region of glowing interstellar clouds.  The Great Orion Nebula, a vast stellar nursery visible even to the unaided eye, shines near the center of the scene.  Surrounding it is the enormous arc of Barnard's Loop, a faint shell of ionized hydrogen gas spanning much of the constellation.  To the left, the round Rosette Nebula glows softly, while the grayish Witch Head Nebula hovers to the right, illuminated by nearby starlight.  Near the top, the orange supergiant Betelgeuse marks the hunter's shoulder.", "hdurl": "https://apod.nasa.gov/apod/image/2601/OrionTatras_Bubak_2048.jpg", "media_type": "image", "service_version": "v1", "title": "Orion's Treasures over Snowy Mountains", "url": "https://apod.nasa.gov/apod/image/2601/OrionTatras_Bubak_960.jpg"}};
         let currentField = "천문·우주";
         let currentType = "apod";
 
-        function showField(f) {{
+        function showField(f) {
             currentField = f;
             currentType = (f === "천문·우주") ? "apod" : "news";
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText === f));
-            renderSubTabs();
-            render();
-        }}
+            renderSubTabs(); render();
+        }
 
-        function showType(t) {{
-            currentType = t;
-            renderSubTabs();
-            render();
-        }}
+        function showType(t) { currentType = t; renderSubTabs(); render(); }
 
-        function renderSubTabs() {{
+        function renderSubTabs() {
             const container = document.getElementById('sub-tabs-container');
             let tabs = [];
-            if (currentField === "천문·우주") tabs.push({{ id: 'apod', name: '오늘의 천문 사진' }});
-            tabs.push({{ id: 'news', name: '뉴스' }}, {{ id: 'papers', name: '논문' }}, {{ id: 'comm', name: '콘텐츠' }}, {{ id: 'data', name: '데이터' }}, {{ id: 'events', name: '일정' }});
+            if (currentField === "천문·우주") tabs.push({ id: 'apod', name: '오늘의 천문 사진' });
+            tabs.push({ id: 'news', name: '뉴스' }, { id: 'papers', name: '논문' }, { id: 'comm', name: '콘텐츠' }, { id: 'data', name: '데이터' });
+            container.innerHTML = tabs.map(t => `<button class="sub-btn ${currentType === t.id ? 'active' : ''}" onclick="showType('${t.id}')">${t.name}</button>`).join('');
+        }
 
-            container.innerHTML = tabs.map(t => `
-                <button class="sub-btn ${{currentType === t.id ? 'active' : ''}}" onclick="showType('${{t.id}}')">${{t.name}}</button>
-            `).join('');
-        }}
-
-        function render() {{
+        function render() {
             const science = fullData.science[currentField];
             const nasa = fullData.nasa;
             const container = document.getElementById('main-content');
             let html = '';
 
-            if (currentType === 'apod') {{
-                if (nasa) {{
-                    html += `
+            if (currentType === 'apod') {
+                const apodOriginalUrl = "https://apod.nasa.gov/apod/astropix.html";
+                const copyright = nasa?.copyright ? nasa.copyright.replace(/\n/g, ' ') : 'NASA / Public Domain';
+                const date = nasa?.date || '';
+                
+                html = nasa ? `
                     <div class="nasa-hero">
-                        <img src="${{nasa.hdurl || nasa.url}}" class="nasa-img" alt="NASA APOD">
+                        <img src="${nasa.url}" class="nasa-img">
                         <div class="nasa-info">
-                            <span class="nasa-tag">NASA APOD TODAY</span>
-                            <div class="nasa-title">${{nasa.title}}</div>
-                            <p class="nasa-desc">${{nasa.explanation}}</p>
-                            <div style="font-size: 0.8rem; color: #555; margin-top:30px; border-top: 1px solid #222; padding-top: 20px;">
-                                <strong>Copyright:</strong> ${{nasa.copyright || 'Public Domain'}} | <strong>Date:</strong> ${{nasa.date}}
+                            <div class="nasa-header-row">
+                                <a href="${apodOriginalUrl}" target="_blank" class="nasa-tag">NASA APOD TODAY ↗</a>
+                                <div class="nasa-actions">
+                                    <a href="${nasa.hdurl || nasa.url}" target="_blank" class="btn-mini">HD 고화질</a>
+                                    <a href="${apodOriginalUrl}" target="_blank" class="btn-mini">NASA 공식 사이트</a>
+                                </div>
+                            </div>
+                            <div class="nasa-title">${nasa.title}</div>
+                            <p class="nasa-desc">${nasa.explanation}</p>
+                            
+                            <div class="nasa-credit">
+                                Copyright: ${copyright}; Text: ${copyright} | Date: ${date}
                             </div>
                         </div>
-                    </div>`;
-                }} else html += `<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>`;
-            }} else if (currentType === 'news') {{
-                html += '<div class="card-grid">' + science.news.map(n => `<a href="${{n.link}}" class="card"><div class="card-title">${{n.title}}</div><div class="card-meta">${{n.date}}</div></a>`).join('') + '</div>';
-            }} else if (currentType === 'papers') {{
-                html += '<div class="card-grid">' + science.papers.map(p => `<a href="${{p.url}}" class="card"><div class="card-title">${{p.title}}</div><div class="card-abstract">${{p.abstract}}</div><div class="card-meta">${{p.authors}}</div></a>`).join('') + '</div>';
-            }} else if (currentType === 'comm') {{
-                html += '<div class="card-grid">' + science.videos.map(v => `<a href="${{v.link}}" class="card"><img src="${{v.thumbnail}}" class="video-thumb"><div class="card-title">${{v.title}}</div></a>`).join('') + '</div>';
-            }} else if (currentType === 'data') {{
-                html += `<div class="data-box"><div style="font-size:1.8rem; font-weight:bold; color:var(--accent); letter-spacing:2px;">${{science.data}}</div></div>`;
-            }} else if (currentType === 'events') {{
-                html += '<div>' + science.events.map(e => `<div class="event-item"><div style="color:#666; font-size:0.85rem; margin-bottom:5px; font-weight:bold;">${{e.date}}</div><div style="font-size:1.1rem; color:#fff;">${{e.title}}</div></div>`).join('') + '</div>';
-            }}
+                    </div>` : '<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>';
+            } 
+            else if (currentType === 'news') {
+                if (science.news.length === 0) {
+                    html = '<div class="data-box">현재 분류된 최신 뉴스가 없습니다.</div>';
+                } else {
+                    html = '<div class="card-grid">' + science.news.map(n => `
+                        <a href="${n.link}" class="card">
+                            <div>${n.tags ? n.tags.map(t => `<span class="ai-tag">#${t}</span>`).join('') : ''}</div>
+                            <div class="card-title">${n.title}</div>
+                            <div class="card-meta">${n.date}</div>
+                        </a>`).join('') + '</div>';
+                }
+            } 
+            else if (currentType === 'papers') {
+                html = '<div class="card-grid">' + science.papers.map(p => `<div class="card"><div class="card-title">${p.title}</div><div class="card-abstract">${p.abstract}</div><div class="card-meta">${p.authors}</div></div>`).join('') + '</div>';
+            } 
+            else if (currentType === 'comm') {
+                html = '<div class="card-grid">' + science.videos.map(v => `<a href="${v.link}" class="card"><img src="${v.thumbnail}" class="video-thumb"><div class="card-title">${v.title}</div></a>`).join('') + '</div>';
+            } 
+            else if (currentType === 'data') {
+                html = `<div class="data-box"><div style="font-size:1.8rem; font-weight:bold; color:var(--accent); letter-spacing:2px;">${science.data}</div></div>`;
+            } 
             container.innerHTML = html;
-        }}
+        }
 
-        window.onload = () => {{
-            showField('천문·우주');
-            document.querySelector('.tabs-field').scrollLeft = 0;
-        }};
+        window.onload = () => showField('천문·우주');
     </script>
 </body>
 </html>
-    """
-
-if __name__ == "__main__":
-    nasa_data = get_nasa_data()
-    science_data = collect_test_data()
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(generate_html(science_data, nasa_data))
-    print("index.html 생성 완료.")
+    
