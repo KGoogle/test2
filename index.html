@@ -69,13 +69,30 @@
         .nasa-hero { margin-bottom: 40px; border-radius: 4px; overflow: hidden; background: #000000; border: 1px solid var(--border); animation: fadeIn 1s; }
         .nasa-img { width: 100%; height: auto; max-height: 750px; object-fit: contain; display: block; margin: 0 auto; background: #000; }
         .nasa-info { padding: 40px; border-top: 1px solid var(--border); }
-        .nasa-tag { background: #fff; color: #000; padding: 3px 10px; border-radius: 2px; font-size: 0.7rem; font-weight: 800; margin-bottom: 20px; display: inline-block; text-transform: uppercase; letter-spacing: 1px; }
-        .nasa-title { font-size: 1.8rem; font-weight: bold; margin-bottom: 15px; font-family: 'Gowun Batang', serif; color: #fff; }
-        .nasa-desc { color: #bbbbbb; font-size: 1rem; line-height: 1.8; text-align: justify; letter-spacing: -0.01em; }
+        
+        .nasa-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .nasa-tag { 
+            background: #fff; color: #000; padding: 5px 12px; border-radius: 2px; 
+            font-size: 0.75rem; font-weight: 800; text-transform: uppercase; 
+            letter-spacing: 1px; text-decoration: none; transition: 0.3s;
+        }
+        .nasa-tag:hover { background: #ccc; }
+        
+        .nasa-actions { display: flex; gap: 8px; }
+        .btn-mini { 
+            border: 1px solid #444; color: #888; padding: 4px 12px; 
+            text-decoration: none; font-size: 0.7rem; border-radius: 2px; 
+            transition: 0.3s; text-transform: uppercase; font-weight: bold;
+        }
+        .btn-mini:hover { border-color: #fff; color: #fff; }
+
+        .nasa-title { font-size: 1.8rem; font-weight: bold; margin-bottom: 20px; font-family: 'Gowun Batang', serif; color: #fff; }
+        .nasa-desc { color: #bbbbbb; font-size: 1rem; line-height: 1.8; text-align: justify; letter-spacing: -0.01em; margin-bottom: 25px; }
 
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; animation: fadeIn 0.4s; }
         .card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 25px; transition: all 0.3s; display: flex; flex-direction: column; text-decoration: none; color: inherit; }
         .card:hover { border-color: #ffffff; background-color: #111111; }
+        .ai-tag { font-size: 10px; color: #888; border: 1px solid #333; padding: 2px 8px; border-radius: 12px; margin-right: 5px; text-transform: uppercase; display: inline-block; margin-bottom: 10px; }
         .card-title { font-size: 1.1rem; font-weight: 600; color: #ffffff; margin-bottom: 12px; line-height: 1.4; }
         .card-meta { font-size: 0.8rem; color: #666; margin-top: auto; letter-spacing: 0.05em; }
         
@@ -100,7 +117,7 @@
     </header>
 
     <div class="container">
-        <nav class="tabs-field"><button class="tab-btn" onclick="showField('천문·우주')">천문·우주</button><button class="tab-btn" onclick="showField('물리학')">물리학</button><button class="tab-btn" onclick="showField('화학')">화학</button><button class="tab-btn" onclick="showField('생명과학')">생명과학</button></nav>
+        <nav class="tabs-field"><button class="tab-btn" onclick="showField('천문·우주')">천문·우주</button><button class="tab-btn" onclick="showField('물리학')">물리학</button><button class="tab-btn" onclick="showField('화학')">화학</button><button class="tab-btn" onclick="showField('생명과학')">생명과학</button><button class="tab-btn" onclick="showField('기타')">기타</button></nav>
         <nav id="sub-tabs-container" class="sub-tabs"></nav>
         <main id="main-content"></main>
     </div>
@@ -116,14 +133,12 @@
         function resizeUniverse() {
             const currentWidth = headerContainer.offsetWidth;
             const currentHeight = headerContainer.offsetHeight;
-
             if (currentWidth !== lastWidth) {
                 universeW = currentWidth; 
                 universeH = currentHeight;
                 universeCanvas.width = universeW * universeDpr; 
                 universeCanvas.height = universeH * universeDpr;
                 universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
-                
                 createStars(Math.round((universeW * universeH) / 800)); 
                 lastWidth = currentWidth;
             }
@@ -133,64 +148,34 @@
             stars = [];
             for (let i = 0; i < count; i++) {
                 const colorRand = Math.random();
-                let color;
-                if (colorRand < 0.7) {
-                    color = '#ffffff';
-                } else if (colorRand < 0.82) {
-                    color = '#aabfff';
-                } else if (colorRand < 0.94) {
-                    color = '#ffd2a1';
-                } else {
-                    color = '#ffcc6f';
-                }
-
-                stars.push({ 
-                    x: Math.random() * universeW, 
-                    y: Math.random() * universeH, 
-                    r: Math.pow(Math.random(), 3) * 1.8 + 0.2, 
-                    tw: Math.random() * Math.PI * 2, 
-                    twSpeed: Math.random() * 0.01 + 0.005, 
-                    c: color 
-                });
+                let color = colorRand < 0.7 ? '#ffffff' : colorRand < 0.82 ? '#aabfff' : colorRand < 0.94 ? '#ffd2a1' : '#ffcc6f';
+                stars.push({ x: Math.random() * universeW, y: Math.random() * universeH, r: Math.pow(Math.random(), 3) * 1.8 + 0.2, tw: Math.random() * Math.PI * 2, twSpeed: Math.random() * 0.01 + 0.005, c: color });
             }
         }
 
         function drawUniverse() {
             universeCtx.clearRect(0, 0, universeW, universeH);
-
             stars.forEach(s => {
                 s.tw += s.twSpeed; 
-
                 const baseAlpha = (s.r / 2.0) * 0.7 + 0.3;
                 const twinkleAlpha = 0.5 + Math.sin(s.tw) * 0.5;
                 universeCtx.globalAlpha = baseAlpha * twinkleAlpha;
-
                 const gradient = universeCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
                 const starColorHex = s.c.substring(1);
-                const r = parseInt(starColorHex.slice(0, 2), 16);
-                const g = parseInt(starColorHex.slice(2, 4), 16);
-                const b = parseInt(starColorHex.slice(4, 6), 16);
-                
+                const r = parseInt(starColorHex.slice(0, 2), 16), g = parseInt(starColorHex.slice(2, 4), 16), b = parseInt(starColorHex.slice(4, 6), 16);
                 gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
-                gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.5)`);
                 gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-                
                 universeCtx.fillStyle = gradient;
-                universeCtx.beginPath(); 
-                universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); 
-                universeCtx.fill();
+                universeCtx.beginPath(); universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); universeCtx.fill();
             });
-            
             universeCtx.globalAlpha = 1;
             requestAnimationFrame(drawUniverse);
         }
 
         window.addEventListener('resize', resizeUniverse); 
-        
-        resizeUniverse(); 
-        drawUniverse();
+        resizeUniverse(); drawUniverse();
 
-        const fullData = {"science": {"천문·우주": {"news": [{"title": "[천문·우주] 뉴스 1", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 2", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 3", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 4", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 5", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 6", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 7", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 8", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 9", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 10", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 11", "link": "#", "date": "2026-01-26"}, {"title": "[천문·우주] 뉴스 12", "link": "#", "date": "2026-01-26"}], "papers": [{"title": "Research in 천문·우주 1", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 천문·우주 2", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 천문·우주 3", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 천문·우주 4", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 천문·우주 5", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 천문·우주 6", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 천문·우주 7", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 천문·우주 8", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}], "videos": [{"title": "천문·우주 영상 콘텐츠 1", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주+1"}, {"title": "천문·우주 영상 콘텐츠 2", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주+2"}, {"title": "천문·우주 영상 콘텐츠 3", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주+3"}, {"title": "천문·우주 영상 콘텐츠 4", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주+4"}, {"title": "천문·우주 영상 콘텐츠 5", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주+5"}, {"title": "천문·우주 영상 콘텐츠 6", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주+6"}], "data": "천문·우주 핵심 지표 모니터링 중", "events": [{"date": "2026-1-16", "title": "천문·우주 컨퍼런스"}, {"date": "2026-1-16", "title": "천문·우주 성과 발표"}]}, "물리학": {"news": [{"title": "[물리학] 뉴스 1", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 2", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 3", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 4", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 5", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 6", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 7", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 8", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 9", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 10", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 11", "link": "#", "date": "2026-01-26"}, {"title": "[물리학] 뉴스 12", "link": "#", "date": "2026-01-26"}], "papers": [{"title": "Research in 물리학 1", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 물리학 2", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 물리학 3", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 물리학 4", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 물리학 5", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 물리학 6", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 물리학 7", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 물리학 8", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}], "videos": [{"title": "물리학 영상 콘텐츠 1", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학+1"}, {"title": "물리학 영상 콘텐츠 2", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학+2"}, {"title": "물리학 영상 콘텐츠 3", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학+3"}, {"title": "물리학 영상 콘텐츠 4", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학+4"}, {"title": "물리학 영상 콘텐츠 5", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학+5"}, {"title": "물리학 영상 콘텐츠 6", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학+6"}], "data": "물리학 핵심 지표 모니터링 중", "events": [{"date": "2026-1-16", "title": "물리학 컨퍼런스"}, {"date": "2026-1-16", "title": "물리학 성과 발표"}]}, "화학": {"news": [{"title": "[화학] 뉴스 1", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 2", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 3", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 4", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 5", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 6", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 7", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 8", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 9", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 10", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 11", "link": "#", "date": "2026-01-26"}, {"title": "[화학] 뉴스 12", "link": "#", "date": "2026-01-26"}], "papers": [{"title": "Research in 화학 1", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 화학 2", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 화학 3", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 화학 4", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 화학 5", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 화학 6", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 화학 7", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 화학 8", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}], "videos": [{"title": "화학 영상 콘텐츠 1", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학+1"}, {"title": "화학 영상 콘텐츠 2", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학+2"}, {"title": "화학 영상 콘텐츠 3", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학+3"}, {"title": "화학 영상 콘텐츠 4", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학+4"}, {"title": "화학 영상 콘텐츠 5", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학+5"}, {"title": "화학 영상 콘텐츠 6", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학+6"}], "data": "화학 핵심 지표 모니터링 중", "events": [{"date": "2026-1-16", "title": "화학 컨퍼런스"}, {"date": "2026-1-16", "title": "화학 성과 발표"}]}, "생명과학": {"news": [{"title": "[생명과학] 뉴스 1", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 2", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 3", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 4", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 5", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 6", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 7", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 8", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 9", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 10", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 11", "link": "#", "date": "2026-01-26"}, {"title": "[생명과학] 뉴스 12", "link": "#", "date": "2026-01-26"}], "papers": [{"title": "Research in 생명과학 1", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 생명과학 2", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 생명과학 3", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 생명과학 4", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 생명과학 5", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 생명과학 6", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 생명과학 7", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}, {"title": "Research in 생명과학 8", "url": "#", "authors": "Dr. Scientist", "abstract": "연구 논문 요약 내용입니다."}], "videos": [{"title": "생명과학 영상 콘텐츠 1", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학+1"}, {"title": "생명과학 영상 콘텐츠 2", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학+2"}, {"title": "생명과학 영상 콘텐츠 3", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학+3"}, {"title": "생명과학 영상 콘텐츠 4", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학+4"}, {"title": "생명과학 영상 콘텐츠 5", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학+5"}, {"title": "생명과학 영상 콘텐츠 6", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학+6"}], "data": "생명과학 핵심 지표 모니터링 중", "events": [{"date": "2026-1-16", "title": "생명과학 컨퍼런스"}, {"date": "2026-1-16", "title": "생명과학 성과 발표"}]}}, "nasa": {"copyright": "\nWłodzimierz Bubak; \nText: Ogetay Kayali \n(MTU) \n", "date": "2026-01-27", "explanation": "Rising over a frozen valley in the Tatra Mountains, the familiar stars and nebulas of Orion dominate this wide-field nightscape.  The featured deep photo was taken in southern Poland's highest mountain range last month, where dark skies and alpine terrain combined to reveal both Earth's rugged beauty and the structure of our galaxy.  Above the snowy mountains, Orion's bright belt stars anchor a region of glowing interstellar clouds.  The Great Orion Nebula, a vast stellar nursery visible even to the unaided eye, shines near the center of the scene.  Surrounding it is the enormous arc of Barnard's Loop, a faint shell of ionized hydrogen gas spanning much of the constellation.  To the left, the round Rosette Nebula glows softly, while the grayish Witch Head Nebula hovers to the right, illuminated by nearby starlight.  Near the top, the orange supergiant Betelgeuse marks the hunter's shoulder.", "hdurl": "https://apod.nasa.gov/apod/image/2601/OrionTatras_Bubak_2048.jpg", "media_type": "image", "service_version": "v1", "title": "Orion's Treasures over Snowy Mountains", "url": "https://apod.nasa.gov/apod/image/2601/OrionTatras_Bubak_960.jpg"}};
+        const fullData = {"science": {"천문·우주": {"news": [], "papers": [{"title": "천문·우주 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "천문·우주 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "천문·우주 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=천문·우주"}], "data": "천문·우주 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "천문·우주 학술 세미나"}]}, "물리학": {"news": [], "papers": [{"title": "물리학 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "물리학 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "물리학 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=물리학"}], "data": "물리학 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "물리학 학술 세미나"}]}, "화학": {"news": [], "papers": [{"title": "화학 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "화학 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "화학 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=화학"}], "data": "화학 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "화학 학술 세미나"}]}, "생명과학": {"news": [], "papers": [{"title": "생명과학 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "생명과학 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "생명과학 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=생명과학"}], "data": "생명과학 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "생명과학 학술 세미나"}]}, "기타": {"news": [{"title": "제임스 웹, 초기 우주의 거대 블랙홀 발견", "desc": "우주 탄생 초기에 형성된 거대 질량 블랙홀의 기원을 연구합니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "양자 컴퓨터를 활용한 단백질 구조 예측", "desc": "물리학의 양자 컴퓨팅 기술을 생명공학에 적용합니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "차세대 전고체 배터리를 위한 신소재 화학 증착", "desc": "안전성이 높은 배터리 구현을 위한 새로운 화학 공법입니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "크리스퍼 유전자 가위의 부작용 억제 기전 확인", "desc": "유전자 편집 시 발생하는 오작동을 줄이는 돌파구입니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}, {"title": "AI 기반 기후 예측 모델의 정확도 향상", "desc": "딥러닝 기술을 활용해 기후 변화를 예측합니다.", "link": "#", "date": "2026-01-26", "tags": ["기타"]}], "papers": [{"title": "기타 최신 연구 리포트", "url": "#", "authors": "Researcher AI", "abstract": "기타 분야의 최신 과학적 성과 요약입니다."}], "videos": [{"title": "기타 탐구 영상", "link": "#", "thumbnail": "https://via.placeholder.com/320x180/000/fff?text=기타"}], "data": "기타 핵심 지표 모니터링", "events": [{"date": "2026-02-15", "title": "기타 학술 세미나"}]}}, "nasa": {"copyright": "\nWłodzimierz Bubak; \nText: Ogetay Kayali \n(MTU) \n", "date": "2026-01-27", "explanation": "Rising over a frozen valley in the Tatra Mountains, the familiar stars and nebulas of Orion dominate this wide-field nightscape.  The featured deep photo was taken in southern Poland's highest mountain range last month, where dark skies and alpine terrain combined to reveal both Earth's rugged beauty and the structure of our galaxy.  Above the snowy mountains, Orion's bright belt stars anchor a region of glowing interstellar clouds.  The Great Orion Nebula, a vast stellar nursery visible even to the unaided eye, shines near the center of the scene.  Surrounding it is the enormous arc of Barnard's Loop, a faint shell of ionized hydrogen gas spanning much of the constellation.  To the left, the round Rosette Nebula glows softly, while the grayish Witch Head Nebula hovers to the right, illuminated by nearby starlight.  Near the top, the orange supergiant Betelgeuse marks the hunter's shoulder.", "hdurl": "https://apod.nasa.gov/apod/image/2601/OrionTatras_Bubak_2048.jpg", "media_type": "image", "service_version": "v1", "title": "Orion's Treasures over Snowy Mountains", "url": "https://apod.nasa.gov/apod/image/2601/OrionTatras_Bubak_960.jpg"}};
         let currentField = "천문·우주";
         let currentType = "apod";
 
@@ -198,25 +183,17 @@
             currentField = f;
             currentType = (f === "천문·우주") ? "apod" : "news";
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText === f));
-            renderSubTabs();
-            render();
+            renderSubTabs(); render();
         }
 
-        function showType(t) {
-            currentType = t;
-            renderSubTabs();
-            render();
-        }
+        function showType(t) { currentType = t; renderSubTabs(); render(); }
 
         function renderSubTabs() {
             const container = document.getElementById('sub-tabs-container');
             let tabs = [];
             if (currentField === "천문·우주") tabs.push({ id: 'apod', name: '오늘의 천문 사진' });
             tabs.push({ id: 'news', name: '뉴스' }, { id: 'papers', name: '논문' }, { id: 'comm', name: '콘텐츠' }, { id: 'data', name: '데이터' }, { id: 'events', name: '일정' });
-
-            container.innerHTML = tabs.map(t => `
-                <button class="sub-btn ${currentType === t.id ? 'active' : ''}" onclick="showType('${t.id}')">${t.name}</button>
-            `).join('');
+            container.innerHTML = tabs.map(t => `<button class="sub-btn ${currentType === t.id ? 'active' : ''}" onclick="showType('${t.id}')">${t.name}</button>`).join('');
         }
 
         function render() {
@@ -226,38 +203,51 @@
             let html = '';
 
             if (currentType === 'apod') {
-                if (nasa) {
-                    html += `
+                const apodOriginalUrl = "https://apod.nasa.gov/apod/astropix.html";
+                html = nasa ? `
                     <div class="nasa-hero">
-                        <img src="${nasa.hdurl || nasa.url}" class="nasa-img" alt="NASA APOD">
+                        <img src="${nasa.url}" class="nasa-img">
                         <div class="nasa-info">
-                            <span class="nasa-tag">NASA APOD TODAY</span>
+                            <div class="nasa-header-row">
+                                <a href="${apodOriginalUrl}" target="_blank" class="nasa-tag">NASA APOD TODAY ↗</a>
+                                <div class="nasa-actions">
+                                    <a href="${nasa.hdurl || nasa.url}" target="_blank" class="btn-mini">HD 고화질</a>
+                                    <a href="${apodOriginalUrl}" target="_blank" class="btn-mini">NASA 공식 사이트</a>
+                                </div>
+                            </div>
                             <div class="nasa-title">${nasa.title}</div>
                             <p class="nasa-desc">${nasa.explanation}</p>
-                            <div style="font-size: 0.8rem; color: #555; margin-top:30px; border-top: 1px solid #222; padding-top: 20px;">
-                                <strong>Copyright:</strong> ${nasa.copyright || 'Public Domain'} | <strong>Date:</strong> ${nasa.date}
-                            </div>
                         </div>
-                    </div>`;
-                } else html += `<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>`;
-            } else if (currentType === 'news') {
-                html += '<div class="card-grid">' + science.news.map(n => `<a href="${n.link}" class="card"><div class="card-title">${n.title}</div><div class="card-meta">${n.date}</div></a>`).join('') + '</div>';
-            } else if (currentType === 'papers') {
-                html += '<div class="card-grid">' + science.papers.map(p => `<a href="${p.url}" class="card"><div class="card-title">${p.title}</div><div class="card-abstract">${p.abstract}</div><div class="card-meta">${p.authors}</div></a>`).join('') + '</div>';
-            } else if (currentType === 'comm') {
-                html += '<div class="card-grid">' + science.videos.map(v => `<a href="${v.link}" class="card"><img src="${v.thumbnail}" class="video-thumb"><div class="card-title">${v.title}</div></a>`).join('') + '</div>';
-            } else if (currentType === 'data') {
-                html += `<div class="data-box"><div style="font-size:1.8rem; font-weight:bold; color:var(--accent); letter-spacing:2px;">${science.data}</div></div>`;
-            } else if (currentType === 'events') {
-                html += '<div>' + science.events.map(e => `<div class="event-item"><div style="color:#666; font-size:0.85rem; margin-bottom:5px; font-weight:bold;">${e.date}</div><div style="font-size:1.1rem; color:#fff;">${e.title}</div></div>`).join('') + '</div>';
+                    </div>` : '<div class="data-box">NASA 데이터를 불러올 수 없습니다.</div>';
+            } 
+            else if (currentType === 'news') {
+                if (science.news.length === 0) {
+                    html = '<div class="data-box">현재 분류된 최신 뉴스가 없습니다.</div>';
+                } else {
+                    html = '<div class="card-grid">' + science.news.map(n => `
+                        <a href="${n.link}" class="card">
+                            <div>${n.tags ? n.tags.map(t => `<span class="ai-tag">#${t}</span>`).join('') : ''}</div>
+                            <div class="card-title">${n.title}</div>
+                            <div class="card-meta">${n.date}</div>
+                        </a>`).join('') + '</div>';
+                }
+            } 
+            else if (currentType === 'papers') {
+                html = '<div class="card-grid">' + science.papers.map(p => `<div class="card"><div class="card-title">${p.title}</div><div class="card-abstract">${p.abstract}</div><div class="card-meta">${p.authors}</div></div>`).join('') + '</div>';
+            } 
+            else if (currentType === 'comm') {
+                html = '<div class="card-grid">' + science.videos.map(v => `<a href="${v.link}" class="card"><img src="${v.thumbnail}" class="video-thumb"><div class="card-title">${v.title}</div></a>`).join('') + '</div>';
+            } 
+            else if (currentType === 'data') {
+                html = `<div class="data-box"><div style="font-size:1.8rem; font-weight:bold; color:var(--accent); letter-spacing:2px;">${science.data}</div></div>`;
+            } 
+            else if (currentType === 'events') {
+                html = '<div>' + science.events.map(e => `<div class="event-item"><div style="color:#666; font-size:0.85rem; margin-bottom:5px; font-weight:bold;">${e.date}</div><div style="font-size:1.1rem; color:#fff;">${e.title}</div></div>`).join('') + '</div>';
             }
             container.innerHTML = html;
         }
 
-        window.onload = () => {
-            showField('천문·우주');
-            document.querySelector('.tabs-field').scrollLeft = 0;
-        };
+        window.onload = () => showField('천문·우주');
     </script>
 </body>
 </html>
