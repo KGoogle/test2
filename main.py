@@ -589,7 +589,7 @@ def generate_html(science_data, nasa_data):
                             <div class="nasa-title">${{nasa.title}}</div>
                             <p class="nasa-desc">${{nasa.explanation}}</p>
                             <div class="nasa-credit">
-                                <strong>Copyright:</strong> ${{nasa.copyright || 'Public Domain'}} | <strong>Date:</strong> ${{nasa.date}}
+                                <strong>Image Credit & Copyright:</strong> ${{nasa.copyright || 'Public Domain'}} | <strong>Date:</strong> ${{nasa.date}}
                             </div>
                         </div>
                     </div>`;
