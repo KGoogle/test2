@@ -387,10 +387,12 @@
                 
                 brainContainer.style.display = 'block';
                 
-                if (!brainInitialized) initBrain();
-            } else {
-                 onBrainResize();
-                 animateBrain(); 
+                if (!brainInitialized) {
+                    initBrain();
+                } else {
+                    onBrainResize();
+                    animateBrain(); 
+                }
 
             } else {
                 cancelAnimationFrame(animationIdBrain);
