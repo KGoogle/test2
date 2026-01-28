@@ -39,5 +39,4 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add index.html
-          # 변경사항이 없을 때 에러가 나지 않도록 처리됨
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update index.html with latest data" && git push)
