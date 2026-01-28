@@ -1,7 +1,6 @@
 import json
 import os
 import requests
-import google.generativeai as genai
 import feedparser
 import re
 import sqlite3
@@ -9,25 +8,33 @@ from typing import List, Dict
 from datetime import datetime
 import time
 
+try:
+    import google.generativeai as genai
+    HAS_GENAI = True
+except ImportError:
+    HAS_GENAI = False
+    print("google-generativeai 라이브러리가 없습니다.")
+
 NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
 
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
-TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY")
+GOOGLE_API_KEY = None #os.environ.get("GOOGLE_API_KEY") 
+TRANSLATE_API_KEY = None #os.environ.get("TRANSLATE_API_KEY")
 
-MODEL_NAME = 'gemini-2.5-flash-lite'
+MODEL_NAME = 'gemini-2.5-flash-lite' 
 
-if GOOGLE_API_KEY:
+classify_model = None
+translate_model = None
+
+if HAS_GENAI and GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
     classify_model = genai.GenerativeModel(MODEL_NAME)
 else:
-    classify_model = None
-    print("⚠️ 경고: GOOGLE_API_KEY가 없습니다.")
+    print("ℹ️ 알림: GOOGLE_API_KEY가 비활성화되어 AI 분류를 건너뜁니다.")
 
-if TRANSLATE_API_KEY:
+if HAS_GENAI and TRANSLATE_API_KEY:
     translate_model = genai.GenerativeModel(MODEL_NAME)
 else:
-    translate_model = None
-    print("⚠️ 경고: TRANSLATE_API_KEY가 없습니다.")
+    print("ℹ️ 알림: TRANSLATE_API_KEY가 비활성화되어 AI 번역을 건너뜁니다.")
 
 SCIENCE_FIELDS = ["천문·우주", "물리학", "인지/신경", "생명과학", "기타"]
 DB_FILE = "science_data.db"
@@ -51,21 +58,24 @@ YOUTUBE_SOURCES = [
     {"type": "channel", "id": "UCIk1-yPCTnFuzfgu4gyfWqw"}  # 과학드림
 ]
 
-def call_gemini_with_retry(model, prompt, api_key, retries=3):
-    if not api_key:
+def call_gemini_with_retry(model, prompt, api_key, retries=2):
+    if not api_key or not model:
         return None
-
+    
     genai.configure(api_key=api_key)
     
-    try:
-        return model.generate_content(prompt)
-    except Exception as e:
-        error_msg = str(e)
-        if "429" in error_msg or "quota" in error_msg.lower():
-            print(f"⚠️ API 할당량 초과 (키 확인 필요)")
-        else:
-            print(f"API 에러: {e}")
-        return None
+    for attempt in range(retries):
+        try:
+            return model.generate_content(prompt)
+        except Exception as e:
+            error_msg = str(e)
+            if "429" in error_msg or "quota" in error_msg.lower():
+                print(f"⚠️ API 할당량 초과 (잠시 대기 후 재시도 {attempt+1}/{retries})...")
+                time.sleep(5) 
+            else:
+                print(f"API 에러: {e}")
+                return None
+    return None
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -93,7 +103,8 @@ def is_video_exists(video_id):
 def save_video_to_db(video_data):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    category = video_data['tags'][0] if video_data.get('tags') else "기타"
+    category = video_data['tags'][0]
+    
     c.execute('''INSERT OR REPLACE INTO videos (id, title, link, thumbnail, pub_date, category, source)
                  VALUES (?, ?, ?, ?, ?, ?, ?)''',
               (video_data['id'], video_data['title'], video_data['link'], 
@@ -119,8 +130,7 @@ def translate_content(text_list: List[str]) -> List[str]:
     
     prompt = f""" 
     당신은 전문 과학 번역가입니다. 아래 텍스트 리스트를 자연스럽고 학술적인 한국어로 번역하세요.
-    - 이미 한국어인 경우 그대로 두세요.
-    - 반드시 JSON 배열 형식으로만 응답하세요: ["번역1", "번역2", ...]
+    - JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
     [텍스트 리스트]
     {json.dumps(text_list, ensure_ascii=False)}
     """
@@ -131,14 +141,12 @@ def translate_content(text_list: List[str]) -> List[str]:
             match = re.search(r'\[.*\]', response.text, re.DOTALL)
             if match:
                 return json.loads(match.group())
-        except Exception as e:
-            print(f"번역 파싱 오류: {e}")
-            
+        except Exception:
+            pass
     return text_list
 
 def classify_data_batch(items: List[Dict]) -> List[Dict]:
     if not items or not classify_model or not GOOGLE_API_KEY:
-        print("분류 모델 미설정 또는 키 없음: 분류를 건너뛰며, DB에 저장하지 않습니다.")
         return []
 
     context = ""
@@ -149,10 +157,7 @@ def classify_data_batch(items: List[Dict]) -> List[Dict]:
     prompt = f"""
     당신은 과학 전문 큐레이터입니다. 아래 콘텐츠를 분석하여 가장 적합한 카테고리 하나를 선택하세요.
     [카테고리 후보] {', '.join(SCIENCE_FIELDS)}
-    - '우주', '행성', 'Space' 관련은 "천문·우주"
-    - '뇌', '신경', '심리', 'Brain', 'Neuroscience', 'Psychology' 관련은 "인지/신경"
-    - 명확하지 않으면 "기타"
-    - 반드시 JSON 리스트 형식으로만 응답: [ {{"id": 0, "tags": ["선택된카테고리"]}} ]
+    - JSON 리스트 형식으로만 응답: [ {{"id": 0, "tags": ["선택된카테고리"]}} ]
     [데이터]
     {context}
     """
@@ -164,16 +169,15 @@ def classify_data_batch(items: List[Dict]) -> List[Dict]:
             match = re.search(r'\[.*\]', response.text, re.DOTALL)
             if match:
                 results = json.loads(match.group())
-                result_map = {res['id']: res.get('tags', ["기타"]) for res in results}
+                result_map = {res['id']: res.get('tags', []) for res in results}
                 
                 for i, item in enumerate(items):
-                    item['tags'] = result_map.get(i, ["기타"])
+                    item['tags'] = result_map.get(i, [])
                 
                 return items
         except Exception as e:
             print(f"분류 파싱 오류: {e}")
 
-    print("AI 분류 실패: 해당 배치를 DB에 저장하지 않습니다.")
     return []
 
 def get_nasa_data():
@@ -186,8 +190,8 @@ def get_nasa_data():
             data['title'] = translated[0]
             data['explanation'] = translated[1]
             return data
-    except Exception as e:
-        print(f"NASA 연결 에러: {e}")
+    except Exception:
+        pass
     return None
 
 def fetch_rss_news() -> List[Dict]:
@@ -217,14 +221,12 @@ def fetch_rss_news() -> List[Dict]:
     return all_news
 
 def fetch_and_process_videos():
-    print("유튜브 영상 가져오는 중...")
+    print("유튜브 영상 확인 중...")
     new_videos = []
     
     for source in YOUTUBE_SOURCES:
-        source_id = source['id']
-        url = f"https://www.youtube.com/feeds/videos.xml?{'playlist_id' if source.get('type')=='playlist' else 'channel_id'}={source_id}"
-        
         try:
+            url = f"https://www.youtube.com/feeds/videos.xml?{'playlist_id' if source.get('type')=='playlist' else 'channel_id'}={source['id']}"
             feed = feedparser.parse(url)
             if not feed.entries: continue
 
@@ -245,48 +247,50 @@ def fetch_and_process_videos():
                     "source": entry.get('author', 'Unknown'),
                     "tags": [] 
                 })
-        except Exception as e:
-            print(f"유튜브 파싱 에러: {e}")
+        except Exception:
+            continue
+    
+    MAX_PROCESS_LIMIT = 10
     
     if new_videos:
-        print(f"새로운 영상 {len(new_videos)}개 처리 시작 (Batch 작업)...")
+        print(f"새로운 영상 총 {len(new_videos)}개 발견.")
+        videos_to_process = new_videos[:MAX_PROCESS_LIMIT]
         
-        titles = [v['title'] for v in new_videos]
-        translated_titles = []
-        batch_size = 10
-        for i in range(0, len(titles), batch_size):
-            translated_titles.extend(translate_content(titles[i:i+batch_size]))
-            time.sleep(5) 
+        titles = [v['title'] for v in videos_to_process]
+        translated_titles = translate_content(titles)
         
-        for i, v in enumerate(new_videos):
+        for i, v in enumerate(videos_to_process):
             if i < len(translated_titles): v['title'] = translated_titles[i]
         
-        classified_videos = []
-        for i in range(0, len(new_videos), batch_size):
-            batch = new_videos[i:i+batch_size]
-            classified_videos.extend(classify_data_batch(batch))
-            time.sleep(5) 
-
+        classified_videos = classify_data_batch(videos_to_process)
+        
+        saved_count = 0
         for video in classified_videos:
-            save_video_to_db(video)
-        print("영상 처리 완료.")
+            if video.get('tags') and len(video['tags']) > 0:
+                save_video_to_db(video)
+                saved_count += 1
+            else:
+                pass
+
+        if not GOOGLE_API_KEY:
+            print("ℹ️ 알림: API 키가 없어 새로운 영상 분류 및 저장을 스킵했습니다.")
+        else:
+            print(f"영상 처리 완료: {saved_count}개 DB 저장됨.")
     else:
         print("새로운 영상이 없습니다.")
 
 def collect_and_process_data():
     init_db()
     
+    fetch_and_process_videos()
+    
     raw_news = fetch_rss_news()
     print(f"뉴스 {len(raw_news)}개 처리 중...")
     
-    texts = []
-    for item in raw_news: 
-        texts.append(item['title'])
-    
+    texts = [item['title'] for item in raw_news]
     translated_all = []
-    for i in range(0, len(texts), 30):
-        translated_all.extend(translate_content(texts[i:i+30]))
-        time.sleep(5)
+    for i in range(0, len(texts), 20):
+        translated_all.extend(translate_content(texts[i:i+20]))
 
     for i, item in enumerate(raw_news):
         if i < len(translated_all):
@@ -294,14 +298,21 @@ def collect_and_process_data():
 
     to_classify = [i for i in raw_news if not i["fixed_category"]]
     if to_classify:
-        classify_data_batch(to_classify)
+        for i in range(0, len(to_classify), 5):
+            batch = to_classify[i:i+5]
+            classify_data_batch(batch)
 
-    fetch_and_process_videos()
-    
     all_data = {field: {"news": [], "videos": [], "papers": [], "data": []} for field in SCIENCE_FIELDS}
     
     for item in raw_news:
-        tag = item.get('tags', [item.get('fixed_category', "기타")])[0]
+        tags = item.get('tags')
+        if tags and len(tags) > 0:
+            tag = tags[0]
+        else:
+            tag = item.get('fixed_category')
+        
+        if not tag: tag = "기타"
+
         matched = "기타"
         for field in SCIENCE_FIELDS:
             if tag in field or field in tag:
