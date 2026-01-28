@@ -16,10 +16,8 @@ except ImportError:
     print("google-generativeai 라이브러리가 없습니다.")
 
 NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-
 GOOGLE_API_KEY = None #os.environ.get("GOOGLE_API_KEY") 
 TRANSLATE_API_KEY = None #os.environ.get("TRANSLATE_API_KEY")
-
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
 classify_model = None
@@ -36,7 +34,7 @@ if HAS_GENAI and TRANSLATE_API_KEY:
 else:
     print("ℹ️ 알림: TRANSLATE_API_KEY가 비활성화되어 AI 번역을 건너뜁니다.")
 
-SCIENCE_FIELDS = ["천문·우주", "물리학", "인지·신경", "생명과학", "기타"]
+SCIENCE_FIELDS = ["천문·우주", "인지·신경", "물리학", "생명과학", "기타"]
 DB_FILE = "science_data.db"
 
 RSS_SOURCES = [
@@ -48,32 +46,28 @@ RSS_SOURCES = [
 ]
 
 YOUTUBE_SOURCES = [
-    {"type": "channel", "id": "UCsXVk37bltHxD1rDPwtNM8Q"}, # Kurzgesagt
-    {"type": "channel", "id": "UCHnyfMqiRRG1u-2MsSQLbXA"}, # Veritasium
-    {"type": "channel", "id": "Csooa4yRKGN_zEE8iknghZA"}, # TED-Ed
-    {"type": "playlist", "id": "PLYeXRzoBwGeHVguBktW327fxb1tKqLXrR"}, # 과학을 보다
-    {"type": "playlist", "id": "PLkKcqR2KGxgzqeKZo1Rx93kJFokuVkpye"}, # 취미는 과학
-    {"type": "channel", "id": "UCMc4EmuDxnHPc6pgGW-QWvQ"}, # 안될 과학
-    {"type": "channel", "id": "UCrBpV_pG2kyMMEHCMTNzjAQ"}, # 리뷰엉이
-    {"type": "channel", "id": "UCIk1-yPCTnFuzfgu4gyfWqw"}  # 과학드림
+    {"type": "channel", "id": "UCsXVk37bltHxD1rDPwtNM8Q"}, 
+    {"type": "channel", "id": "UCHnyfMqiRRG1u-2MsSQLbXA"}, 
+    {"type": "channel", "id": "Csooa4yRKGN_zEE8iknghZA"}, 
+    {"type": "playlist", "id": "PLYeXRzoBwGeHVguBktW327fxb1tKqLXrR"}, 
+    {"type": "playlist", "id": "PLkKcqR2KGxgzqeKZo1Rx93kJFokuVkpye"}, 
+    {"type": "channel", "id": "UCMc4EmuDxnHPc6pgGW-QWvQ"}, 
+    {"type": "channel", "id": "UCrBpV_pG2kyMMEHCMTNzjAQ"}, 
+    {"type": "channel", "id": "UCIk1-yPCTnFuzfgu4gyfWqw"}  
 ]
 
 def call_gemini_with_retry(model, prompt, api_key, retries=2):
     if not api_key or not model:
         return None
-    
     genai.configure(api_key=api_key)
-    
     for attempt in range(retries):
         try:
             return model.generate_content(prompt)
         except Exception as e:
             error_msg = str(e)
             if "429" in error_msg or "quota" in error_msg.lower():
-                print(f"⚠️ API 할당량 초과 (잠시 대기 후 재시도 {attempt+1}/{retries})...")
                 time.sleep(5) 
             else:
-                print(f"API 에러: {e}")
                 return None
     return None
 
@@ -103,8 +97,8 @@ def is_video_exists(video_id):
 def save_video_to_db(video_data):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    category = video_data['tags'][0]
     
+    category = video_data['tags'][0]
     c.execute('''INSERT OR REPLACE INTO videos (id, title, link, thumbnail, pub_date, category, source)
                  VALUES (?, ?, ?, ?, ?, ?, ?)''',
               (video_data['id'], video_data['title'], video_data['link'], 
@@ -127,14 +121,12 @@ def get_latest_videos(category=None, limit=8):
 def translate_content(text_list: List[str]) -> List[str]:
     if not translate_model or not text_list or not TRANSLATE_API_KEY:
         return text_list
-    
     prompt = f""" 
     당신은 전문 과학 번역가입니다. 아래 텍스트 리스트를 자연스럽고 학술적인 한국어로 번역하세요.
     - JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
     [텍스트 리스트]
     {json.dumps(text_list, ensure_ascii=False)}
     """
-
     response = call_gemini_with_retry(translate_model, prompt, TRANSLATE_API_KEY)
     if response:
         try:
@@ -148,36 +140,38 @@ def translate_content(text_list: List[str]) -> List[str]:
 def classify_data_batch(items: List[Dict]) -> List[Dict]:
     if not items or not classify_model or not GOOGLE_API_KEY:
         return []
-
     context = ""
     for i, item in enumerate(items):
         desc = item.get('desc', '')
         context += f"ID: {i}\n제목: {item['title']}\n내용: {desc[:150]}\n---\n"
-
     prompt = f"""
-    당신은 과학 전문 큐레이터입니다. 아래 콘텐츠를 분석하여 가장 적합한 카테고리 하나를 선택하세요.
+    당신은 과학 전문 큐레이터입니다. 아래 콘텐츠를 분석하여 [카테고리 후보] 중 관련된 것을 모두 선택해 태그를 다세요.
+    
+    [중요 규칙]
+    1. 내용은 여러 분야에 걸쳐 있을 수 있으므로 관련된 카테고리는 모두 나열하세요.
+    2. 단, **가장 핵심이 되는(가장 관련도가 높은) 카테고리를 반드시 배열의 첫 번째**에 두세요. 이 첫 번째 태그가 분류 기준이 됩니다.
+    3. JSON 리스트 형식으로만 응답하세요.
+    
     [카테고리 후보] {', '.join(SCIENCE_FIELDS)}
-    - JSON 리스트 형식으로만 응답: [ {{"id": 0, "tags": ["선택된카테고리"]}} ]
+    
+    [응답 예시]
+    [ {{"id": 0, "tags": ["가장관련된분야", "부차적분야"]}} ]
+    
     [데이터]
     {context}
     """
-
     response = call_gemini_with_retry(classify_model, prompt, GOOGLE_API_KEY)
-    
     if response:
         try:
             match = re.search(r'\[.*\]', response.text, re.DOTALL)
             if match:
                 results = json.loads(match.group())
                 result_map = {res['id']: res.get('tags', []) for res in results}
-                
                 for i, item in enumerate(items):
                     item['tags'] = result_map.get(i, [])
-                
                 return items
-        except Exception as e:
-            print(f"분류 파싱 오류: {e}")
-
+        except Exception:
+            pass
     return []
 
 def get_nasa_data():
@@ -223,20 +217,16 @@ def fetch_rss_news() -> List[Dict]:
 def fetch_and_process_videos():
     print("유튜브 영상 확인 중...")
     new_videos = []
-    
     for source in YOUTUBE_SOURCES:
         try:
             url = f"https://www.youtube.com/feeds/videos.xml?{'playlist_id' if source.get('type')=='playlist' else 'channel_id'}={source['id']}"
             feed = feedparser.parse(url)
             if not feed.entries: continue
-
             for entry in feed.entries[:]:
                 video_id = entry.yt_videoid
                 if is_video_exists(video_id): continue 
-
                 thumbnail = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
                 if 'media_thumbnail' in entry: thumbnail = entry.media_thumbnail[0]['url']
-                
                 new_videos.append({
                     "id": video_id,
                     "title": entry.title,
@@ -249,31 +239,22 @@ def fetch_and_process_videos():
                 })
         except Exception:
             continue
-    
     MAX_PROCESS_LIMIT = 10
-    
     if new_videos:
         print(f"새로운 영상 총 {len(new_videos)}개 발견.")
         videos_to_process = new_videos[:MAX_PROCESS_LIMIT]
-        
         titles = [v['title'] for v in videos_to_process]
         translated_titles = translate_content(titles)
-        
         for i, v in enumerate(videos_to_process):
             if i < len(translated_titles): v['title'] = translated_titles[i]
-        
         classified_videos = classify_data_batch(videos_to_process)
-        
         saved_count = 0
         for video in classified_videos:
             if video.get('tags') and len(video['tags']) > 0:
                 save_video_to_db(video)
                 saved_count += 1
-            else:
-                pass
-
         if not GOOGLE_API_KEY:
-            print("ℹ️ 알림: API 키가 없어 새로운 영상 분류 및 저장을 스킵했습니다.")
+            print("ℹ️ 알림: API 키가 없어 분류 및 저장을 스킵했습니다.")
         else:
             print(f"영상 처리 완료: {saved_count}개 DB 저장됨.")
     else:
@@ -281,9 +262,7 @@ def fetch_and_process_videos():
 
 def collect_and_process_data():
     init_db()
-    
     fetch_and_process_videos()
-    
     raw_news = fetch_rss_news()
     print(f"뉴스 {len(raw_news)}개 처리 중...")
     
@@ -291,38 +270,36 @@ def collect_and_process_data():
     translated_all = []
     for i in range(0, len(texts), 20):
         translated_all.extend(translate_content(texts[i:i+20]))
-
     for i, item in enumerate(raw_news):
-        if i < len(translated_all):
-            item['title'] = translated_all[i]
-
+        if i < len(translated_all): item['title'] = translated_all[i]
+   
     to_classify = [i for i in raw_news if not i["fixed_category"]]
     if to_classify:
         for i in range(0, len(to_classify), 5):
             batch = to_classify[i:i+5]
             classify_data_batch(batch)
-
+   
     all_data = {field: {"news": [], "videos": [], "papers": [], "data": []} for field in SCIENCE_FIELDS}
-    
     for item in raw_news:
         tags = item.get('tags')
-        if tags and len(tags) > 0:
-            tag = tags[0]
-        else:
-            tag = item.get('fixed_category')
+        category_candidate = item.get('fixed_category')
         
-        if not tag: tag = "기타"
-
+        if not category_candidate:
+            if tags and len(tags) > 0:
+                category_candidate = tags[0]
+            else:
+                category_candidate = "기타"
+        
         matched = "기타"
         for field in SCIENCE_FIELDS:
-            if tag in field or field in tag:
+            if category_candidate in field or field in category_candidate:
                 matched = field
                 break
         all_data[matched]["news"].append(item)
-    
+        
     for field in SCIENCE_FIELDS:
         all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
-
+    
     all_data["천문·우주"]["papers"] = [
         {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature"},
         {"title": "사이언스", "desc": "임시", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
@@ -330,15 +307,17 @@ def collect_and_process_data():
     ]
     all_data["천문·우주"]["data"] = [
         {"title": "나사", "desc": "임시", "link": "https://www.nasa.gov/", "source": "NASA"},
-        {"title": "유럽 우주국", "desc": "임시", "link": "https://www.esa.int/", "source": "ESA"}
+        {"title": "유럽 우주국", "desc": "임시", "link": "https://www.esa.int/", "source": "ESA"},
     ]
-
     return all_data
 
 def generate_html(science_data, nasa_data):
     full_payload = json.dumps({"science": science_data, "nasa": nasa_data}, ensure_ascii=False)
-    
-    field_buttons_html = "".join([f'<button class="tab-btn" onclick="showField(\'{f}\')">{f}</button>' for f in SCIENCE_FIELDS])
+    field_buttons_html = "".join([f'<button class="tab-btn" onclick="window.showField(\'{f}\')">{f}</button>' for f in SCIENCE_FIELDS])
+    universe_quote = """
+    "삶에 별빛을 섞으세요. <br>하찮은 일에 마음이 괴롭지 않을 겁니다." <br>
+    <span style="font-size:14px; margin-top:15px; display:block; opacity: 0.8;">- 마리아 미첼 -</span>
+    """
 
     return f"""
 <!DOCTYPE html>
@@ -364,46 +343,46 @@ def generate_html(science_data, nasa_data):
             margin: 0; padding: 0; line-height: 1.6;
             overflow-x: hidden;
         }}
+        
         header {{ 
             position: relative; text-align: center; padding: 80px 20px;
-            overflow: hidden; background: #000;
+            overflow: hidden; background: #000; height: 350px; display: flex; align-items: center; justify-content: center;
         }}
+        
         #universe {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; display: block; }}
-        .header-content {{ position: relative; z-index: 1; pointer-events: none; }}
+        
+        #brain-container {{
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; display: none;
+            background-color: #000000; 
+        }}
+
+        .header-content {{ position: relative; z-index: 1; pointer-events: none; transition: opacity 0.5s; }}
+        
         header h1 {{
             margin: 0; font-size: 19px; color: #ffffff;
             font-family: 'Gowun Batang', serif;
-            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
             word-break: keep-all; line-height: 1.8; font-weight: 400;
         }}
         
         .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; position: relative; z-index: 1; }}
     
         .tabs-field {{ 
-            display: flex; 
-            gap: 10px; 
-            margin: 0 auto 20px auto; 
-            border-bottom: 1px solid var(--border); 
-            padding: 0 15px 15px 15px; 
-            overflow-x: auto; 
-            justify-content: flex-start;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
+            display: flex; gap: 10px; margin: 0 auto 20px auto; 
+            border-bottom: 1px solid var(--border); padding: 0 15px 15px 15px; 
+            overflow-x: auto; justify-content: flex-start;
+            scrollbar-width: none; -webkit-overflow-scrolling: touch;
         }}
         .tabs-field::-webkit-scrollbar {{ display: none; }}
-
-        @media (min-width: 600px) {{
-            .tabs-field {{ justify-content: center; }}
-        }}
+        @media (min-width: 600px) {{ .tabs-field {{ justify-content: center; }} }}
 
         .tab-btn {{ 
             background: transparent; border: 1px solid var(--border); color: var(--text-sub); 
             padding: 10px 24px; cursor: pointer; border-radius: 4px; font-weight: 500; 
-            font-size: 0.95rem; transition: all 0.3s; white-space: nowrap;
-            flex-shrink: 0;
+            font-size: 0.95rem; transition: all 0.3s; white-space: nowrap; flex-shrink: 0;
         }}
-        .tab-btn:hover {{ border-color: #666; color: #fff; }}
         .tab-btn.active {{ background: #ffffff; color: #000000; border-color: #ffffff; font-weight: bold; }}
+        .tab-btn:hover {{ border-color: #666; color: #fff; }}
         
         .sub-tabs {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }}
         .sub-btn {{ background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; font-weight: bold; padding: 5px 0; border-bottom: 2px solid transparent; transition: 0.3s; }}
@@ -414,7 +393,7 @@ def generate_html(science_data, nasa_data):
         .nasa-img {{ width: 100%; height: auto; max-height: 750px; object-fit: contain; display: block; margin: 0 auto; background: #000; }}
         .nasa-info {{ padding: 40px; border-top: 1px solid var(--border); }}
         .nasa-header-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }}
-        .nasa-tag {{ background: #fff; color: #000; padding: 5px 12px; border-radius: 2px; font-size: 0.75rem; font-weight: 800; text-decoration: none; }}
+        .nasa-tag {{ background: #fff; color: #000; padding: 5px 12px; border-radius: 2px; font-size: 0.75rem; font-weight: 800; }}
         .nasa-actions {{ display: flex; gap: 8px; }}
         .btn-mini {{ border: 1px solid #444; color: #888; padding: 4px 12px; text-decoration: none; font-size: 0.7rem; border-radius: 2px; transition: 0.3s; }}
         .btn-mini:hover {{ border-color: #fff; color: #fff; }}
@@ -439,13 +418,19 @@ def generate_html(science_data, nasa_data):
         
         @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(15px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     </style>
+    
+    <script type="importmap">
+        {{ "imports": {{ "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" }} }}
+    </script>
 </head>
 <body>
     <header id="header-container">
         <canvas id="universe"></canvas>
-        <div class="header-content">
-            <h1>"삶에 별빛을 섞으세요. <br>하찮은 일에 마음이 괴롭지 않을 겁니다." <br><span style="font-size:14px; margin-top:15px; display:block; opacity: 0.8;">- 마리아 미첼 -</span></h1>
+        <div id="universe-content" class="header-content">
+            <h1>{universe_quote}</h1>
         </div>
+
+        <div id="brain-container"></div>
     </header>
 
     <div class="container">
@@ -454,39 +439,46 @@ def generate_html(science_data, nasa_data):
         <main id="main-content"></main>
     </div>
 
-    <script>
+    <script type="module">
+        import * as THREE from 'three';
+        import {{ OrbitControls }} from 'three/addons/controls/OrbitControls.js';
+        import {{ EffectComposer }} from 'three/addons/postprocessing/EffectComposer.js';
+        import {{ RenderPass }} from 'three/addons/postprocessing/RenderPass.js';
+        import {{ UnrealBloomPass }} from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        const fullData = {full_payload};
+        let currentField = "천문·우주";
+        let currentType = "apod";
+
         const universeCanvas = document.getElementById('universe');
         const universeCtx = universeCanvas.getContext('2d');
         const headerContainer = document.getElementById('header-container');
         let universeW, universeH, universeDpr = Math.max(1, window.devicePixelRatio || 1);
         let stars = [];
-        let lastWidth = 0;
+        let animationIdUniverse;
+
+        function initUniverse() {{
+            resizeUniverse();
+            window.addEventListener('resize', resizeUniverse);
+            animateUniverse();
+        }}
 
         function resizeUniverse() {{
             const currentWidth = headerContainer.offsetWidth;
             const currentHeight = headerContainer.offsetHeight;
-            if (currentWidth !== lastWidth) {{
-                universeW = currentWidth; 
-                universeH = currentHeight;
-                universeCanvas.width = universeW * universeDpr; 
-                universeCanvas.height = universeH * universeDpr;
-                universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
-                
-                createStars(Math.round((universeW * universeH) / 800)); 
-                lastWidth = currentWidth;
-            }}
+            universeW = currentWidth; 
+            universeH = currentHeight;
+            universeCanvas.width = universeW * universeDpr; 
+            universeCanvas.height = universeH * universeDpr;
+            universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
+            createStars(Math.round((universeW * universeH) / 800)); 
         }}
 
         function createStars(count) {{
             stars = [];
             for (let i = 0; i < count; i++) {{
                 const colorRand = Math.random();
-                let color;
-                if (colorRand < 0.7) color = '#ffffff';
-                else if (colorRand < 0.82) color = '#aabfff';
-                else if (colorRand < 0.94) color = '#ffd2a1';
-                else color = '#ffcc6f';
-
+                let color = (colorRand < 0.7) ? '#ffffff' : (colorRand < 0.82) ? '#aabfff' : (colorRand < 0.94) ? '#ffd2a1' : '#ffcc6f';
                 stars.push({{ 
                     x: Math.random() * universeW, 
                     y: Math.random() * universeH, 
@@ -498,57 +490,229 @@ def generate_html(science_data, nasa_data):
             }}
         }}
 
-        function drawUniverse() {{
+        function animateUniverse() {{
             universeCtx.clearRect(0, 0, universeW, universeH);
             stars.forEach(s => {{
                 s.tw += s.twSpeed; 
                 const baseAlpha = (s.r / 2.0) * 0.7 + 0.3;
                 const twinkleAlpha = 0.5 + Math.sin(s.tw) * 0.5;
                 universeCtx.globalAlpha = baseAlpha * twinkleAlpha;
-
+                
+                const r = parseInt(s.c.substring(1,3), 16);
+                const g = parseInt(s.c.substring(3,5), 16);
+                const b = parseInt(s.c.substring(5,7), 16);
+                
                 const gradient = universeCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-                const starColorHex = s.c.substring(1);
-                const r = parseInt(starColorHex.slice(0, 2), 16);
-                const g = parseInt(starColorHex.slice(2, 4), 16);
-                const b = parseInt(starColorHex.slice(4, 6), 16);
-                
                 gradient.addColorStop(0, `rgba(${{r}}, ${{g}}, ${{b}}, 1)`);
-                gradient.addColorStop(0.5, `rgba(${{r}}, ${{g}}, ${{b}}, 0.5)`);
                 gradient.addColorStop(1, `rgba(${{r}}, ${{g}}, ${{b}}, 0)`);
-                
                 universeCtx.fillStyle = gradient;
-                universeCtx.beginPath(); 
-                universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); 
-                universeCtx.fill();
+                universeCtx.beginPath(); universeCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); universeCtx.fill();
             }});
-            
             universeCtx.globalAlpha = 1;
-            requestAnimationFrame(drawUniverse);
+            animationIdUniverse = requestAnimationFrame(animateUniverse);
         }}
 
-        window.addEventListener('resize', resizeUniverse); 
-        resizeUniverse(); 
-        drawUniverse();
+        let brainScene, brainCamera, brainRenderer, brainControls, brainGroup, brainComposer, brainInitialized = false;
+        let animationIdBrain;
 
-        const fullData = {full_payload};
-        let currentField = "천문·우주";
-        let currentType = "apod";
+        async function initBrain() {{
+            if (brainInitialized) return;
+            brainInitialized = true;
 
-        function showField(f) {{
+            const container = document.getElementById('brain-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            brainScene = new THREE.Scene();
+            brainScene.background = new THREE.Color(0x000000);
+            brainScene.fog = new THREE.FogExp2(0x000000, 0.007);
+
+            brainCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            brainCamera.position.set(0, 0, 200);
+
+            brainRenderer = new THREE.WebGLRenderer({{ antialias: true }});
+            brainRenderer.setSize(width, height);
+            brainRenderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(brainRenderer.domElement);
+
+            brainControls = new OrbitControls(brainCamera, brainRenderer.domElement);
+            brainControls.enableDamping = true;
+            brainControls.dampingFactor = 0.05;
+            brainControls.minDistance = 50;
+            brainControls.maxDistance = 300;
+            brainControls.enablePan = false;
+
+            const renderScene = new RenderPass(brainScene, brainCamera);
+            
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0;
+            bloomPass.strength = 0.5;
+            bloomPass.radius = 0.1;
+
+            brainComposer = new EffectComposer(brainRenderer);
+            brainComposer.addPass(renderScene);
+            brainComposer.addPass(bloomPass);
+
+            try {{
+                const response = await fetch('brain.json');
+                const data = await response.json();
+                createDigitalBrain(data);
+            }} catch (e) {{ console.error("Brain load fail", e); }}
+
+            window.addEventListener('resize', onBrainResize);
+            animateBrain();
+        }}
+
+        function createCircleTexture() {{
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(200,200,255,0.8)');
+            gradient.addColorStop(0.8, 'rgba(150,150,255,0.1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 128, 128);
+            return new THREE.CanvasTexture(canvas);
+        }}
+
+        function createDigitalBrain(data) {{
+            const tempGeo = new THREE.BufferGeometry();
+            tempGeo.setAttribute('position', new THREE.Float32BufferAttribute(data.vertices.flat(), 3));
+            tempGeo.computeBoundingBox();
+            const center = new THREE.Vector3();
+            tempGeo.boundingBox.getCenter(center);
+            
+            for (let i = 0; i < data.vertices.length; i++) {{
+                const vec = new THREE.Vector3().fromArray(data.vertices[i]);
+                vec.sub(center);
+                data.vertices[i] = vec.toArray();
+            }}
+
+            const CEREBELLUM_ID = 6;
+            const CEREBELLUM_SCALE = 0.85;
+            const cerebellumCenter = new THREE.Vector3();
+            let cerebellumVertexCount = 0;
+            const cerebellumIndices = [];
+
+            if (data.types) {{
+                for (let i = 0; i < data.types.length; i++) {{
+                    if (data.types[i] === CEREBELLUM_ID) {{
+                        const vertex = data.vertices[i];
+                        cerebellumCenter.add(new THREE.Vector3(vertex[0], vertex[1], vertex[2]));
+                        cerebellumVertexCount++;
+                        cerebellumIndices.push(i);
+                    }}
+                }}
+                if (cerebellumVertexCount > 0) {{
+                    cerebellumCenter.divideScalar(cerebellumVertexCount);
+                    for (const i of cerebellumIndices) {{
+                        const vertexVec = new THREE.Vector3().fromArray(data.vertices[i]);
+                        const newPosition = vertexVec.sub(cerebellumCenter).multiplyScalar(CEREBELLUM_SCALE).add(cerebellumCenter);
+                        data.vertices[i] = newPosition.toArray();
+                    }}
+                }}
+            }}
+
+            brainGroup = new THREE.Group();
+            brainScene.add(brainGroup);
+
+            const vertices = new Float32Array(data.vertices.flat());
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            
+            const numVertices = vertices.length / 3;
+            const colors = new Float32Array(numVertices * 3);
+            const baseColor = new THREE.Color().setHSL(0.6, 0.9, 0.6); 
+            for(let i=0; i<numVertices; i++) {{ colors.set([baseColor.r, baseColor.g, baseColor.b], i*3); }}
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({{
+                size: 0.8,
+                sizeAttenuation: true, 
+                map: createCircleTexture(),
+                vertexColors: true, 
+                transparent: true,
+                blending: THREE.AdditiveBlending, 
+                depthWrite: false
+            }});
+
+            const points = new THREE.Points(geometry, material);
+            brainGroup.add(points);
+            
+            const lineGeo = new THREE.BufferGeometry();
+            lineGeo.setAttribute('position', geometry.getAttribute('position'));
+            lineGeo.setIndex(data.faces.flat());
+            
+            const lineMaterial = new THREE.LineBasicMaterial({{ 
+                color: 0x99bbff, 
+                transparent: true, 
+                opacity: 0.15, 
+                blending: THREE.AdditiveBlending, 
+                depthWrite: false 
+            }});
+            
+            const wireframe = new THREE.WireframeGeometry(lineGeo);
+            const lines = new THREE.LineSegments(wireframe, lineMaterial);
+            brainGroup.add(lines);
+
+            brainGroup.rotation.x = -Math.PI / 2;
+            brainGroup.rotation.z = Math.PI / 2;
+        }}
+
+        function onBrainResize() {{
+            if (!brainContainer.style.display === 'none') return;
+            const container = document.getElementById('brain-container');
+            const w = container.clientWidth; const h = container.clientHeight;
+            brainCamera.aspect = w / h; brainCamera.updateProjectionMatrix();
+            brainRenderer.setSize(w, h); brainComposer.setSize(w, h);
+        }}
+
+        function animateBrain() {{
+            animationIdBrain = requestAnimationFrame(animateBrain);
+            if(brainControls) brainControls.update();
+            if(brainGroup) brainGroup.rotation.z += 0.002;
+            if(brainComposer) brainComposer.render();
+        }}
+
+        const brainContainer = document.getElementById('brain-container');
+        const universeContainer = document.getElementById('universe');
+        const universeContent = document.getElementById('universe-content');
+
+        window.showField = function(f) {{
             currentField = f;
             currentType = (f === "천문·우주") ? "apod" : "news";
             
+            if (f === "인지·신경") {{
+                universeContainer.style.display = 'none';
+                universeContent.style.display = 'none';
+                
+                brainContainer.style.display = 'block';
+                
+                if (!brainInitialized) initBrain();
+                else onBrainResize(); 
+
+            }} else {{
+                brainContainer.style.display = 'none';
+
+                universeContainer.style.display = 'block';
+                universeContent.style.display = 'block';
+                resizeUniverse();
+            }}
+
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText === f));
             
             renderSubTabs();
             render();
-        }}
+        }};
 
-        function showType(t) {{
+        window.showType = function(t) {{
             currentType = t;
             renderSubTabs();
             render();
-        }}
+        }};
 
         function renderSubTabs() {{
             const container = document.getElementById('sub-tabs-container');
@@ -563,7 +727,7 @@ def generate_html(science_data, nasa_data):
             );
 
             container.innerHTML = tabs.map(t => `
-                <button class="sub-btn ${{currentType === t.id ? 'active' : ''}}" onclick="showType('${{t.id}}')">${{t.name}}</button>
+                <button class="sub-btn ${{currentType === t.id ? 'active' : ''}}" onclick="window.showType('${{t.id}}')">${{t.name}}</button>
             `).join('');
         }}
 
@@ -636,11 +800,9 @@ def generate_html(science_data, nasa_data):
             container.innerHTML = html;
         }}
 
-        window.onload = () => {{
-            showField('천문·우주');
-            const tabField = document.querySelector('.tabs-field');
-            if(tabField) tabField.scrollLeft = 0;
-        }};
+        initUniverse();
+        window.showField('천문·우주');
+        
     </script>
 </body>
 </html>
