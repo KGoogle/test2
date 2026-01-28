@@ -38,5 +38,15 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add index.html
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update index.html with latest data" && git push)
+          
+          git add index.html science_data.db
+          
+          if ! git diff --quiet || ! git diff --staged --quiet; then
+            git commit -m "Update data [skip ci]"
+            
+            git pull --rebase origin main
+            
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
