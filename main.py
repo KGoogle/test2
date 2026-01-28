@@ -9,9 +9,9 @@ from typing import List, Dict
 from datetime import datetime
 import time
 
-#NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-#GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-#TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY") or GOOGLE_API_KEY
+NASA_API_KEY = None  # os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+GOOGLE_API_KEY = None  # os.environ.get("GOOGLE_API_KEY")
+TRANSLATE_API_KEY = None # os.environ.get("TRANSLATE_API_KEY") or GOOGLE_API_KEY
 
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
