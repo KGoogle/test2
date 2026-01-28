@@ -36,7 +36,7 @@ if HAS_GENAI and TRANSLATE_API_KEY:
 else:
     print("ℹ️ 알림: TRANSLATE_API_KEY가 비활성화되어 AI 번역을 건너뜁니다.")
 
-SCIENCE_FIELDS = ["천문·우주", "물리학", "인지/신경", "생명과학", "기타"]
+SCIENCE_FIELDS = ["천문·우주", "물리학", "인지·신경", "생명과학", "기타"]
 DB_FILE = "science_data.db"
 
 RSS_SOURCES = [
@@ -324,8 +324,8 @@ def collect_and_process_data():
         all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
 
     all_data["천문·우주"]["papers"] = [
-        {"title": "네이처 - Astronomy", "desc": "최신 천문학 연구", "link": "https://www.nature.com/natastron/", "source": "Nature"},
-        {"title": "사이언스 - Space", "desc": "우주 과학 섹션", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
+        {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature"},
+        {"title": "사이언스", "desc": "임시", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
         {"title": "왕립학회", "desc": "임시", "link": "https://royalsociety.org/", "source": "Royal Society"}
     ]
     all_data["천문·우주"]["data"] = [
@@ -583,6 +583,7 @@ def generate_html(science_data, nasa_data):
                                 <span class="nasa-tag">NASA APOD TODAY</span>
                                 <div class="nasa-actions">
                                     <a href="${{nasa.hdurl || nasa.url}}" target="_blank" class="btn-mini">HD 보기</a>
+                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 홈페이지</a>
                                 </div>
                             </div>
                             <div class="nasa-title">${{nasa.title}}</div>
