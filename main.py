@@ -468,10 +468,13 @@ def generate_html(science_data, nasa_data):
             const currentHeight = headerContainer.offsetHeight;
             universeW = currentWidth; 
             universeH = currentHeight;
+
+            universeDpr = Math.min(window.devicePixelRatio || 1, 2); 
+            
             universeCanvas.width = universeW * universeDpr; 
             universeCanvas.height = universeH * universeDpr;
             universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
-            createStars(Math.round((universeW * universeH) / 800)); 
+            createStars(Math.round((universeW * universeH) / 1000)); 
         }}
 
         function createStars(count) {{
@@ -519,6 +522,8 @@ def generate_html(science_data, nasa_data):
             if (brainInitialized) return;
             brainInitialized = true;
 
+            const isMobile = window.innerWidth < 768;
+
             const container = document.getElementById('brain-container');
             const width = container.clientWidth;
             const height = container.clientHeight;
@@ -530,7 +535,7 @@ def generate_html(science_data, nasa_data):
             brainCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
             brainCamera.position.set(0, 0, 200);
 
-            brainRenderer = new THREE.WebGLRenderer({{ antialias: true }});
+            brainRenderer = new THREE.WebGLRenderer({{ antialias: !isMobile }});
             brainRenderer.setSize(width, height);
             brainRenderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(brainRenderer.domElement);
@@ -541,7 +546,8 @@ def generate_html(science_data, nasa_data):
             brainControls.minDistance = 50;
             brainControls.maxDistance = 300;
             brainControls.enablePan = false;
-
+            
+            if (!isMobile) {{
             const renderScene = new RenderPass(brainScene, brainCamera);
             
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 1.5, 0.4, 0.85);
@@ -552,6 +558,9 @@ def generate_html(science_data, nasa_data):
             brainComposer = new EffectComposer(brainRenderer);
             brainComposer.addPass(renderScene);
             brainComposer.addPass(bloomPass);
+            }} else {{
+                brainComposer = null;
+            }}
 
             try {{
                 const response = await fetch('brain.json');
@@ -674,7 +683,11 @@ def generate_html(science_data, nasa_data):
             animationIdBrain = requestAnimationFrame(animateBrain);
             if(brainControls) brainControls.update();
             if(brainGroup) brainGroup.rotation.z += 0.002;
-            if(brainComposer) brainComposer.render();
+            if(brainComposer) {{
+                brainComposer.render();
+            }} else if (brainRenderer) {{
+                brainRenderer.render(brainScene, brainCamera);
+            }}
         }}
 
         const brainContainer = document.getElementById('brain-container');
@@ -686,20 +699,25 @@ def generate_html(science_data, nasa_data):
             currentType = (f === "천문·우주") ? "apod" : "news";
             
             if (f === "인지·신경") {{
+                cancelAnimationFrame(animationIdUniverse);
                 universeContainer.style.display = 'none';
                 universeContent.style.display = 'none';
                 
                 brainContainer.style.display = 'block';
                 
                 if (!brainInitialized) initBrain();
-                else onBrainResize(); 
+            }} else {{
+                 onBrainResize();
+                 animateBrain(); 
 
             }} else {{
+                cancelAnimationFrame(animationIdBrain);
                 brainContainer.style.display = 'none';
 
                 universeContainer.style.display = 'block';
                 universeContent.style.display = 'block';
                 resizeUniverse();
+                animateUniverse();
             }}
 
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText === f));
@@ -747,7 +765,7 @@ def generate_html(science_data, nasa_data):
                                 <span class="nasa-tag">NASA APOD TODAY</span>
                                 <div class="nasa-actions">
                                     <a href="${{nasa.hdurl || nasa.url}}" target="_blank" class="btn-mini">HD 보기</a>
-                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 홈페이지</a>
+                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 원본</a>
                                 </div>
                             </div>
                             <div class="nasa-title">${{nasa.title}}</div>
