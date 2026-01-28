@@ -13,20 +13,20 @@ import time
 #GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 #TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY") or GOOGLE_API_KEY
 
-#MODEL_NAME = 'gemini-2.5-flash-lite' 
+MODEL_NAME = 'gemini-2.5-flash-lite' 
 
-#if GOOGLE_API_KEY:
-#    genai.configure(api_key=GOOGLE_API_KEY)
-#    classify_model = genai.GenerativeModel(MODEL_NAME)
-#else:
-#    classify_model = None
-#    print("경고: GOOGLE_API_KEY가 없어 분류 기능이 제한됩니다.")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    classify_model = genai.GenerativeModel(MODEL_NAME)
+else:
+    classify_model = None
+    print("경고: GOOGLE_API_KEY가 없어 분류 기능이 제한됩니다.")
 
-#if TRANSLATE_API_KEY:
-#    genai.configure(api_key=TRANSLATE_API_KEY)
-#    translate_model = genai.GenerativeModel(MODEL_NAME)
-#else:
-#    translate_model = None
+if TRANSLATE_API_KEY:
+    genai.configure(api_key=TRANSLATE_API_KEY)
+    translate_model = genai.GenerativeModel(MODEL_NAME)
+else:
+    translate_model = None
 
 SCIENCE_FIELDS = ["천문·우주", "물리학", "화학", "생명과학", "기타"]
 DB_FILE = "science_data.db"
