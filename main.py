@@ -9,24 +9,24 @@ from typing import List, Dict
 from datetime import datetime
 import time
 
-NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY") or GOOGLE_API_KEY
+#NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+#GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+#TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY") or GOOGLE_API_KEY
 
-MODEL_NAME = 'gemini-2.5-flash-lite' 
+#MODEL_NAME = 'gemini-2.5-flash-lite' 
 
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-    classify_model = genai.GenerativeModel(MODEL_NAME)
-else:
-    classify_model = None
-    print("경고: GOOGLE_API_KEY가 없어 분류 기능이 제한됩니다.")
+#if GOOGLE_API_KEY:
+#    genai.configure(api_key=GOOGLE_API_KEY)
+#    classify_model = genai.GenerativeModel(MODEL_NAME)
+#else:
+#    classify_model = None
+#    print("경고: GOOGLE_API_KEY가 없어 분류 기능이 제한됩니다.")
 
-if TRANSLATE_API_KEY:
-    genai.configure(api_key=TRANSLATE_API_KEY)
-    translate_model = genai.GenerativeModel(MODEL_NAME)
-else:
-    translate_model = None
+#if TRANSLATE_API_KEY:
+#    genai.configure(api_key=TRANSLATE_API_KEY)
+#    translate_model = genai.GenerativeModel(MODEL_NAME)
+#else:
+#    translate_model = None
 
 SCIENCE_FIELDS = ["천문·우주", "물리학", "화학", "생명과학", "기타"]
 DB_FILE = "science_data.db"
@@ -51,19 +51,15 @@ YOUTUBE_SOURCES = [
 ]
 
 def call_gemini_with_retry(model, prompt, retries=3):
-    for attempt in range(retries):
-        try:
-            return model.generate_content(prompt)
-        except Exception as e:
-            error_msg = str(e)
-            if "429" in error_msg or "quota" in error_msg.lower():
-                print(f"⚠️ API 할당량 초과 (429). 60초 대기 후 재시도합니다... ({attempt+1}/{retries})")
-                time.sleep(60)
-            else:
-                print(f"API 에러: {e}")
-                return None
-    print("❌ 최대 재시도 횟수 초과. 건너뜁니다.")
-    return None
+    try:
+        return model.generate_content(prompt)
+    except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg or "quota" in error_msg.lower():
+            print(f"⚠️ API 할당량 초과 (429). 대기하지 않고 즉시 건너뜁니다.")
+        else:
+            print(f"API 에러: {e}")
+        return None
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -250,7 +246,7 @@ def fetch_and_process_videos():
         batch_size = 10
         for i in range(0, len(titles), batch_size):
             translated_titles.extend(translate_content(titles[i:i+batch_size]))
-            time.sleep(5)
+            time.sleep(5) 
         
         for i, v in enumerate(new_videos):
             if i < len(translated_titles): v['title'] = translated_titles[i]
@@ -259,7 +255,7 @@ def fetch_and_process_videos():
         for i in range(0, len(new_videos), batch_size):
             batch = new_videos[i:i+batch_size]
             classified_videos.extend(classify_data_batch(batch))
-            time.sleep(5)
+            time.sleep(5) 
 
         for video in classified_videos:
             save_video_to_db(video)
@@ -279,7 +275,7 @@ def collect_and_process_data():
     translated_all = []
     for i in range(0, len(texts), 20):
         translated_all.extend(translate_content(texts[i:i+20]))
-        time.sleep(2)
+        time.sleep(5)
     for i, item in enumerate(raw_news):
         if (i*2 + 1) < len(translated_all):
             item['title'] = translated_all[i*2]
@@ -343,9 +339,12 @@ def generate_html(science_data, nasa_data):
         .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; min-height: 100vh; }}
         .tabs-field {{ display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; overflow-x: auto; justify-content: center; scrollbar-width: none; }}
         .tab-btn {{ background: transparent; border: 1px solid var(--border); color: var(--text-sub); padding: 10px 24px; cursor: pointer; border-radius: 4px; transition: 0.3s; white-space: nowrap; }}
+        .tab-btn:hover {{ border-color: #666; color: #fff; }}
         .tab-btn.active {{ background: #fff; color: #000; font-weight: bold; border-color: #fff; }}
+        
         .sub-tabs {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }}
-        .sub-btn {{ background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; font-weight: bold; border-bottom: 2px solid transparent; padding: 5px 0; }}
+        .sub-btn {{ background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; font-weight: bold; border-bottom: 2px solid transparent; padding: 5px 0; transition: 0.3s; }}
+        .sub-btn:hover {{ color: #aaa; }}
         .sub-btn.active {{ color: var(--accent); border-bottom-color: var(--accent); }}
         
         .nasa-hero {{ margin-bottom: 40px; border-radius: 4px; border: 1px solid var(--border); overflow: hidden; animation: fadeIn 1s; background: #000; }}
