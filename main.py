@@ -705,10 +705,12 @@ def generate_html(science_data, nasa_data):
                 
                 brainContainer.style.display = 'block';
                 
-                if (!brainInitialized) initBrain();
-            }} else {{
-                 onBrainResize();
-                 animateBrain(); 
+                if (!brainInitialized) {{
+                    initBrain();
+                }} else {{
+                    onBrainResize();
+                    animateBrain(); 
+                }}
 
             }} else {{
                 cancelAnimationFrame(animationIdBrain);
