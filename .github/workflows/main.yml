@@ -19,6 +19,11 @@ jobs:
         with:
           fetch-depth: 0 
 
+      - name: Checkout Main Branch
+        run: |
+          git checkout main
+          git pull origin main
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -44,7 +49,7 @@ jobs:
           if ! git diff --quiet || ! git diff --staged --quiet; then
             git commit -m "Update data [skip ci]"
             
-            git pull --rebase origin main
+            git pull --rebase -Xtheirs origin main
             
             git push origin main
           else
