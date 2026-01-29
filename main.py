@@ -257,7 +257,7 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
 
     params = {
         "q": query,
-        "p": 10,
+        "p": 20,
         "s": 1,
         "sort": "date",
         "api_key": SPRINGER_API_KEY
@@ -269,10 +269,13 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
         
         if response.status_code == 200:
             data = response.json()
+
             records = data.get('records', [])
             
             for record in records:
-                if not record.get('abstract'):
+                genres = record.get('genre', [])
+                
+                if "OriginalPaper" not in genres:
                     continue
 
                 link = ""
@@ -281,14 +284,13 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
                     if u.get('format') == 'html':
                         link = u.get('value')
                         break
-                if not link and urls:
-                    link = urls[0].get('value')
+                if not link and urls: link = urls[0].get('value')
 
                 papers.append({
                     "title": record.get('title', '제목 없음'),
-                    "desc": "",
+                    "desc": "", 
                     "link": link,
-                    "date": record.get('publicationDate', datetime.now().strftime("%Y-%m-%d")),
+                    "date": record.get('publicationDate', ''),
                     "source": record.get('publicationName', 'Nature Portfolio')
                 })
                 
@@ -441,8 +443,8 @@ def collect_and_process_data():
     all_data["천문·우주"]["papers"].extend(static_papers)
 
     all_data["천문·우주"]["data"] = [
-        {"title": "NASA", "desc": "미 항공우주국", "link": "https://www.nasa.gov/", "source": "NASA"},
-        {"title": "ESA", "desc": "유럽 우주국", "link": "https://www.esa.int/", "source": "ESA"},
+        {"title": "나사", "desc": "임시", "link": "https://www.nasa.gov/", "source": "NASA"},
+        {"title": "유럽 우주국", "desc": "임시", "link": "https://www.esa.int/", "source": "ESA"},
     ]
     
     return all_data
