@@ -15,8 +15,8 @@ except ImportError:
     HAS_GENAI = False
     print("google-generativeai 라이브러리가 없습니다.")
 
-NASA_API_KEY = os.environ.get('NASA_API_KEY')
-SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
+NASA_API_KEY = None os.environ.get('NASA_API_KEY')
+SPRINGER_API_KEY = None os.environ.get("SPRINGER_API_KEY")
 
 GOOGLE_API_KEY = None      # os.environ.get("GOOGLE_API_KEY") 
 TRANSLATE_API_KEY = None   # os.environ.get("TRANSLATE_API_KEY")
@@ -239,14 +239,13 @@ def fetch_springer_papers(subject_query) -> List[Dict]:
         print("ℹ️ 알림: SPRINGER_API_KEY가 설정되지 않아 논문 수집을 건너뜁니다.")
         return []
 
-    print("Springer API로 논문 검색 중...")
+    print(f"Springer Meta API(v2)로 논문 검색 중... ({subject_query})")
     
-    base_url = "http://api.springernature.com/meta/v1/json"
+    base_url = "http://api.springernature.com/meta/v2/json"
     
     query = (
         f'subject:"{subject_query}" '
         f'AND type:Journal '
-        f'AND (journal:"Nature" OR journal:"Nature {subject_query}") '
         f'sort:date'
     )
     
@@ -291,7 +290,12 @@ def fetch_springer_papers(subject_query) -> List[Dict]:
                 })
         else:
             print(f"Springer API Error ({subject_query}): {response.status_code}")
-            print(f"Error Message: {response.text}")
+            try:
+                error_resp = response.json()
+                msg = error_resp.get('message', '') or error_resp.get('error', {}).get('message', '')
+                print(f"Message: {msg}")
+            except:
+                print(f"Raw Response: {response.text[:200]}")
 
     except Exception as e:
         print(f"Error fetching papers for {subject_query}: {e}")
