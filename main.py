@@ -16,23 +16,30 @@ except ImportError:
     print("google-generativeai 라이브러리가 없습니다.")
 
 NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
-TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY")
+GOOGLE_API_KEY = None #os.environ.get("GOOGLE_API_KEY") 
+TRANSLATE_API_KEY = None #os.environ.get("TRANSLATE_API_KEY")
+PAPER_API_KEY = None # os.environ.get("PAPER_API_KEY")
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
 classify_model = None
 translate_model = None
+paper_model = None
 
 if HAS_GENAI and GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
     classify_model = genai.GenerativeModel(MODEL_NAME)
 else:
-    print("ℹ️ 알림: GOOGLE_API_KEY가 비활성화되어 AI 분류를 건너뜁니다.")
+    print("ℹ️ 알림: GOOGLE_API_KEY가 설정되지 않아 AI 분류를 건너뜁니다.")
 
 if HAS_GENAI and TRANSLATE_API_KEY:
     translate_model = genai.GenerativeModel(MODEL_NAME)
 else:
-    print("ℹ️ 알림: TRANSLATE_API_KEY가 비활성화되어 AI 번역을 건너뜁니다.")
+    print("ℹ️ 알림: TRANSLATE_API_KEY가 설정되지 않아 AI 번역을 건너뜁니다.")
+
+if HAS_GENAI and PAPER_API_KEY:
+    paper_model = genai.GenerativeModel(MODEL_NAME)
+else:
+    print("ℹ️ 알림: PAPER_API_KEY가 설정되지 않아 논문 번역을 건너뜁니다.")
 
 SCIENCE_FIELDS = ["천문·우주", "인지·신경", "물리학", "생명과학", "기타"]
 DB_FILE = "science_data.db"
@@ -109,11 +116,13 @@ def save_video_to_db(video_data):
 def get_latest_videos(category=None, limit=8):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    if category and category != "기타":
-        query = f"SELECT title, link, thumbnail, pub_date, source FROM videos WHERE category LIKE ? ORDER BY pub_date DESC LIMIT ?"
+    
+    if category:
+        query = "SELECT title, link, thumbnail, pub_date, source FROM videos WHERE category LIKE ? ORDER BY pub_date DESC LIMIT ?"
         c.execute(query, (f'%{category}%', limit))
     else:
         c.execute("SELECT title, link, thumbnail, pub_date, source FROM videos ORDER BY pub_date DESC LIMIT ?", (limit,))
+        
     rows = c.fetchall()
     conn.close()
     return [{"title": r[0], "link": r[1], "thumbnail": r[2], "date": r[3], "source": r[4]} for r in rows]
@@ -220,7 +229,7 @@ def fetch_rss_papers() -> List[Dict]:
         {"url": "https://www.nature.com/natastron.rss", "source": "Nature Astronomy"},
         {"url": "https://www.nature.com/subjects/astronomy-and-planetary-science/nature.rss", "source": "Nature"}
     ]
-    
+
     print("논문(Nature) 피드 읽는 중...")
     for src in sources:
         try:
@@ -241,16 +250,21 @@ def fetch_rss_papers() -> List[Dict]:
 def fetch_and_process_videos():
     print("유튜브 영상 확인 중...")
     new_videos = []
+    
     for source in YOUTUBE_SOURCES:
         try:
             url = f"https://www.youtube.com/feeds/videos.xml?{'playlist_id' if source.get('type')=='playlist' else 'channel_id'}={source['id']}"
             feed = feedparser.parse(url)
             if not feed.entries: continue
+            
             for entry in feed.entries[:]:
                 video_id = entry.yt_videoid
+                
                 if is_video_exists(video_id): continue 
+                
                 thumbnail = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
                 if 'media_thumbnail' in entry: thumbnail = entry.media_thumbnail[0]['url']
+                
                 new_videos.append({
                     "id": video_id,
                     "title": entry.title,
@@ -263,15 +277,18 @@ def fetch_and_process_videos():
                 })
         except Exception:
             continue
+    
     MAX_PROCESS_LIMIT = 10
     if new_videos:
         print(f"새로운 영상 총 {len(new_videos)}개 발견.")
         videos_to_process = new_videos[:MAX_PROCESS_LIMIT]
+        
         titles = [v['title'] for v in videos_to_process]
         translated_titles = translate_content(titles)
         for i, v in enumerate(videos_to_process):
             if i < len(translated_titles): v['title'] = translated_titles[i]
         classified_videos = classify_data_batch(videos_to_process)
+        
         saved_count = 0
         for video in classified_videos:
             if video.get('tags') and len(video['tags']) > 0:
@@ -305,6 +322,7 @@ def collect_and_process_data():
             classify_data_batch(batch)
    
     all_data = {field: {"news": [], "videos": [], "papers": [], "data": []} for field in SCIENCE_FIELDS}
+    
     for item in raw_news:
         tags = item.get('tags')
         category_candidate = item.get('fixed_category')
@@ -330,17 +348,42 @@ def collect_and_process_data():
     
     if raw_papers:
         paper_titles = [p['title'] for p in raw_papers]
-        translated_papers = translate_content(paper_titles)
+        
+        translated_papers = paper_titles 
+
+        if HAS_GENAI and PAPER_API_KEY and paper_model:
+            print("논문 전용 키를 사용하여 번역 시도...")
+            prompt = f""" 
+            당신은 전문 과학 번역가입니다. 아래 논문 제목 리스트를 자연스럽고 학술적인 한국어로 번역하세요.
+            - JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
+            [텍스트 리스트]
+            {json.dumps(paper_titles, ensure_ascii=False)}
+            """
+            response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
+            
+            if response:
+                try:
+                    match = re.search(r'\[.*\]', response.text, re.DOTALL)
+                    if match:
+                        translated_papers = json.loads(match.group())
+                except Exception:
+                    print("논문 번역 결과 파싱 실패. 원문을 유지합니다.")
+        else:
+            print("ℹ️ 알림: PAPER_API_KEY가 없어 논문 번역을 건너뜁니다.")
+
         for i, p in enumerate(raw_papers):
             if i < len(translated_papers): p['title'] = translated_papers[i]
 
     all_data["천문·우주"]["papers"] = raw_papers
-    
-    all_data["천문·우주"]["papers"] = [
+
+    static_papers = [
         {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature"},
         {"title": "사이언스", "desc": "임시", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
         {"title": "왕립학회", "desc": "임시", "link": "https://royalsociety.org/", "source": "Royal Society"}
     ]
+
+    all_data["천문·우주"]["papers"].extend(static_papers)
+
     all_data["천문·우주"]["data"] = [
         {"title": "나사", "desc": "임시", "link": "https://www.nasa.gov/", "source": "NASA"},
         {"title": "유럽 우주국", "desc": "임시", "link": "https://www.esa.int/", "source": "ESA"},
