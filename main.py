@@ -291,7 +291,8 @@ def fetch_springer_papers(subject_query) -> List[Dict]:
                 })
         else:
             print(f"Springer API Error ({subject_query}): {response.status_code}")
-            
+            print(f"Error Message: {response.text}")
+
     except Exception as e:
         print(f"Error fetching papers for {subject_query}: {e}")
 
@@ -431,9 +432,10 @@ def collect_and_process_data():
             all_data[field_kr]["papers"] = field_papers
 
     static_papers = [
-        {"title": "네이처 천문학 (Nature Astronomy)", "desc": "저널 메인 페이지", "link": "https://www.nature.com/natastron/", "source": "Nature"},
-        {"title": "사이언스 (Science)", "desc": "천문학 섹션", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
-        {"title": "왕립학회 (Royal Society)", "desc": "공식 홈페이지", "link": "https://royalsociety.org/", "source": "Royal Society"}
+        {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/", "source": "Nature"},
+        {"title": "네이처 천문학", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature"},
+        {"title": "사이언스", "desc": "임시", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
+        {"title": "왕립학회", "desc": "임시", "link": "https://royalsociety.org/", "source": "Royal Society"}
     ]
     all_data["천문·우주"]["papers"].extend(static_papers)
 
@@ -540,7 +542,7 @@ def generate_html(science_data, nasa_data):
         .nasa-credit {{ font-size: 0.85rem; color: #666; margin-top: 20px; padding-top: 20px; border-top: 1px solid #222; }}
 
         .card-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; animation: fadeIn 0.4s; }}
-        .card {{ background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 25px; transition: all 0.3s; display: flex; flex-direction: column; text-decoration: none; color: inherit; position: relative; overflow: hidden; }}
+        .card {{ background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 25px; transition: all 0.3s; display: flex; flex-direction: column; text-decoration: none; color: inherit; position: relative; overflow: hidden; cursor: pointer; }}
         .card:hover {{ border-color: #ffffff; background-color: #111111; transform: translateY(-3px); }}
         .source-tag {{ font-size: 10px; background: #fff; color: #000; padding: 2px 6px; border-radius: 2px; position: absolute; top: 15px; right: 15px; font-weight: bold; z-index: 2; }}
         .ai-tag {{ font-size: 10px; color: #888; border: 1px solid #333; padding: 2px 8px; border-radius: 12px; display: inline-block; margin-bottom: 12px; align-self: flex-start; }}
@@ -554,16 +556,6 @@ def generate_html(science_data, nasa_data):
         .video-card .play-icon {{ position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }}
         .video-card .play-icon::after {{ content:''; display: block; width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 14px solid #fff; margin-left: 4px; }}
         
-        .paper-card {{ display: block; position: relative; }}
-        .paper-card .card-meta {{ display: flex; justify-content: space-between; margin-bottom: 10px; margin-top: 0; }}
-        .paper-card .source-tag {{ position: static; display: inline-block; margin-right: 10px; background: #222; color: #fff; border: 1px solid #333; }}
-        
-        details {{ margin-top: 15px; border-top: 1px solid #222; padding-top: 12px; }}
-        summary {{ cursor: pointer; color: #777; font-size: 0.85rem; list-style: none; outline: none; font-weight: bold; transition: color 0.2s; }}
-        summary:hover {{ color: #aaa; }}
-        summary::-webkit-details-marker {{ display: none; }}
-        .abstract-text {{ margin-top: 10px; font-size: 0.9rem; color: #bbb; text-align: justify; line-height: 1.6; word-break: keep-all; }}
-
         @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(15px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     </style>
     
@@ -930,7 +922,7 @@ def generate_html(science_data, nasa_data):
                                 <span class="nasa-tag">NASA APOD TODAY</span>
                                 <div class="nasa-actions">
                                     <a href="${{nasa.hdurl || nasa.url}}" target="_blank" class="btn-mini">HD 보기</a>
-                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 홈페이지</a>
+                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 원본</a>
                                 </div>
                             </div>
                             <div class="nasa-title">${{nasa.title}}</div>
@@ -971,18 +963,12 @@ def generate_html(science_data, nasa_data):
                 const list = science.papers || [];
                 if (list.length > 0) {{
                      html = '<div class="card-grid">' + list.map(p => `
-                        <div class="card paper-card">
-                            <div class="card-meta">
-                                <span class="source-tag">${{p.source}}</span>
-                                <span>${{p.date || ''}}</span>
-                            </div>
-                            <a href="${{p.link}}" target="_blank" class="card-title">${{p.title}}</a>
-                            
-                            <details>
-                                <summary>Abstract</summary>
-                                <div class="abstract-text">${{p.desc}}</div>
-                            </details>
-                        </div>`).join('') + '</div>';
+                        <a href="${{p.link}}" target="_blank" class="card">
+                            <span class="source-tag">${{p.source}}</span>
+                            <span class="ai-tag">#Journal</span>
+                            <div class="card-title">${{p.title}}</div>
+                            <div class="card-meta">${{p.date || ''}}</div>
+                        </a>`).join('') + '</div>';
                 }} else {{
                     html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 논문 정보를 준비 중입니다.<br>(API 키 확인 필요)</div>`;
                 }}
