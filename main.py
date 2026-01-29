@@ -16,8 +16,8 @@ except ImportError:
     print("google-generativeai 라이브러리가 없습니다.")
 
 NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-GOOGLE_API_KEY = None #os.environ.get("GOOGLE_API_KEY") 
-TRANSLATE_API_KEY = None #os.environ.get("TRANSLATE_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
+TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY")
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
 classify_model = None
@@ -40,7 +40,7 @@ DB_FILE = "science_data.db"
 RSS_SOURCES = [
     {"url": "https://www.sciencedaily.com/rss/top.xml", "fixed_category": None},
     {"url": "https://phys.org/rss-feed/breaking/", "fixed_category": None},
-    {"url": "https://www.space.com/feeds.xml", "fixed_category": "천문·우주"},
+    {"url": "https://www.space.com/feeds/articletype/news", "fixed_category": "천문·우주"},
     {"url": "https://www.scientificamerican.com/platform/syndication/rss/", "fixed_category": None},
     {"url": "https://www.quantamagazine.org/feed/", "fixed_category": None}
 ]
@@ -214,6 +214,30 @@ def fetch_rss_news() -> List[Dict]:
             continue
     return all_news
 
+def fetch_rss_papers() -> List[Dict]:
+    papers = []
+    sources = [
+        {"url": "https://www.nature.com/natastron.rss", "source": "Nature Astronomy"},
+        {"url": "https://www.nature.com/subjects/astronomy-and-planetary-science/nature.rss", "source": "Nature"}
+    ]
+    
+    print("논문(Nature) 피드 읽는 중...")
+    for src in sources:
+        try:
+            feed = feedparser.parse(src["url"])
+            for entry in feed.entries[:5]:
+                papers.append({
+                    "title": entry.title,
+                    "desc": entry.get('summary', entry.get('description', '내용 없음')),
+                    "link": entry.link,
+                    "date": entry.get('published', datetime.now().strftime("%Y-%m-%d")),
+                    "source": src["source"]
+                })
+        except Exception as e:
+            print(f"Error fetching papers from {src['source']}: {e}")
+            continue
+    return papers
+
 def fetch_and_process_videos():
     print("유튜브 영상 확인 중...")
     new_videos = []
@@ -263,6 +287,7 @@ def fetch_and_process_videos():
 def collect_and_process_data():
     init_db()
     fetch_and_process_videos()
+    
     raw_news = fetch_rss_news()
     print(f"뉴스 {len(raw_news)}개 처리 중...")
     
@@ -299,6 +324,17 @@ def collect_and_process_data():
         
     for field in SCIENCE_FIELDS:
         all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
+    
+    print("논문 데이터 처리 및 번역 중...")
+    raw_papers = fetch_rss_papers()
+    
+    if raw_papers:
+        paper_titles = [p['title'] for p in raw_papers]
+        translated_papers = translate_content(paper_titles)
+        for i, p in enumerate(raw_papers):
+            if i < len(translated_papers): p['title'] = translated_papers[i]
+
+    all_data["천문·우주"]["papers"] = raw_papers
     
     all_data["천문·우주"]["papers"] = [
         {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature"},
@@ -455,7 +491,6 @@ def generate_html(science_data, nasa_data):
         let currentField = "천문·우주";
         let currentType = "apod";
 
-        /* --- UNIVERSE BACKGROUND LOGIC --- */
         const universeCanvas = document.getElementById('universe');
         const universeCtx = universeCanvas.getContext('2d');
         const headerContainer = document.getElementById('header-container');
@@ -487,7 +522,7 @@ def generate_html(science_data, nasa_data):
             universeCanvas.height = universeH * universeDpr;
             universeCtx.setTransform(universeDpr, 0, 0, universeDpr, 0, 0);
             
-            createStars(Math.round((universeW * universeH) / 800)); 
+            createStars(Math.round((universeW * universeH) / 1000)); 
         }}
 
         function createStars(count) {{
@@ -707,7 +742,7 @@ def generate_html(science_data, nasa_data):
         function animateBrain() {{
             animationIdBrain = requestAnimationFrame(animateBrain);
             if(brainControls) brainControls.update();
-            if(brainGroup) brainGroup.rotation.z += 0.002;
+            if(brainGroup) brainGroup.rotation.z += 0.005;
             if(brainComposer) brainComposer.render();
         }}
 
@@ -763,7 +798,7 @@ def generate_html(science_data, nasa_data):
             tabs.push(
                 {{ id: 'news', name: '뉴스' }}, 
                 {{ id: 'videos', name: '콘텐츠' }}, 
-                {{ id: 'papers', name: '논문' }},
+                {{ id: 'papers', name: '논문(수정중)' }},
                 {{ id: 'data', name: '데이터' }}
             );
 
