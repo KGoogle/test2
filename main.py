@@ -409,40 +409,38 @@ def collect_and_process_data():
     
     print("논문 데이터 처리 및 번역 중...")
     
-    field_map = {
-        "천문·우주": "Astronomy",
-        "인지·신경": "Neuroscience",
-        "물리학": "Physics",
-        "생명과학": "Biology",
-        "기타": "Science"
-    }
+    field_list = ["천문·우주", "인지·신경", "물리학", "생명과학", "기타"]
 
-    for field_kr, field_en in field_map.items():
-        field_papers = fetch_springer_papers(field_en)
+    for field_kr in field_list:
+        field_papers = fetch_springer_papers(field_kr)
         
-        if field_papers:
-            if HAS_GENAI and PAPER_API_KEY and paper_model:
-                paper_titles = [p['title'] for p in field_papers]
-                
-                prompt = f""" 
-                당신은 전문 과학 번역가입니다. 아래 논문 제목들을 자연스럽고 학술적인 한국어로 번역하세요.
-                JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
-                {json.dumps(paper_titles, ensure_ascii=False)}
-                """
-                response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
-                
-                if response:
-                    try:
-                        match = re.search(r'\[.*\]', response.text, re.DOTALL)
-                        if match:
-                            translated_titles = json.loads(match.group())
-                            for i, p in enumerate(field_papers):
-                                if i < len(translated_titles):
-                                    p['title'] = translated_titles[i]
-                    except Exception:
-                        print(f"{field_kr} 논문 번역 파싱 실패, 원문 유지")
+        if not field_papers:
+            continue
 
-            all_data[field_kr]["papers"] = field_papers
+        if HAS_GENAI and PAPER_API_KEY and paper_model:
+            paper_titles = [p['title'] for p in field_papers]
+            
+            prompt = f""" 
+            당신은 전문 과학 번역가입니다. 아래 논문 제목들을 자연스럽고 학술적인 한국어로 번역하세요.
+            JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
+            [대상 텍스트]
+            {json.dumps(paper_titles, ensure_ascii=False)}
+            """
+            
+            response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
+            
+            if response:
+                try:
+                    match = re.search(r'\[.*\]', response.text, re.DOTALL)
+                    if match:
+                        translated_titles = json.loads(match.group())
+                        for i, p in enumerate(field_papers):
+                            if i < len(translated_titles):
+                                p['title'] = translated_titles[i]
+                except Exception as e:
+                    print(f"{field_kr} 논문 번역 파싱 실패 ({e}), 원문 유지")
+
+        all_data[field_kr]["papers"] = field_papers
 
     static_papers = [
         {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/", "source": "Nature"},
