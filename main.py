@@ -41,6 +41,13 @@ if HAS_GENAI and PAPER_API_KEY:
 else:
     print("ℹ️ 알림: PAPER_API_KEY가 설정되지 않아 논문 번역을 건너뜁니다.")
 
+def clean_html(raw_html):
+    if not raw_html:
+        return ""
+    cleanr = re.compile('<.*?>')
+    cleantext = re.sub(cleanr, '', raw_html)
+    return cleantext.strip()
+
 SCIENCE_FIELDS = ["천문·우주", "인지·신경", "물리학", "생명과학", "기타"]
 DB_FILE = "science_data.db"
 
@@ -235,8 +242,13 @@ def fetch_rss_papers() -> List[Dict]:
         try:
             feed = feedparser.parse(src["url"])
             for entry in feed.entries[:5]:
+                raw_desc = entry.get('summary', entry.get('description', '내용 없음'))
+                
+                cleaned_desc = clean_html(raw_desc)
+
                 papers.append({
                     "title": entry.title,
+                    "desc": cleaned_desc,
                     "desc": entry.get('summary', entry.get('description', '내용 없음')),
                     "link": entry.link,
                     "date": entry.get('published', datetime.now().strftime("%Y-%m-%d")),
@@ -866,7 +878,7 @@ def generate_html(science_data, nasa_data):
                                 <span class="nasa-tag">NASA APOD TODAY</span>
                                 <div class="nasa-actions">
                                     <a href="${{nasa.hdurl || nasa.url}}" target="_blank" class="btn-mini">HD 보기</a>
-                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 홈페이지</a>
+                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 원본</a>
                                 </div>
                             </div>
                             <div class="nasa-title">${{nasa.title}}</div>
