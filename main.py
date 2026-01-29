@@ -257,7 +257,7 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
 
     params = {
         "q": query,
-        "p": 100,
+        "p": 10,
         "s": 1,
         "sort": "date",
         "api_key": SPRINGER_API_KEY
