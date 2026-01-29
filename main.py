@@ -233,10 +233,8 @@ def fetch_rss_news() -> List[Dict]:
             continue
     return all_news
 
-def fetch_springer_papers() -> List[Dict]:
-    """
-    Springer Nature API를 사용하여 'Astronomy' 관련 최신 논문을 가져옵니다.
-    """
+def fetch_springer_papers(subject_query) -> List[Dict]:
+
     if not SPRINGER_API_KEY:
         print("ℹ️ 알림: SPRINGER_API_KEY가 설정되지 않아 논문 수집을 건너뜁니다.")
         return []
@@ -244,9 +242,18 @@ def fetch_springer_papers() -> List[Dict]:
     print("Springer API로 논문 검색 중...")
     
     base_url = "http://api.springernature.com/meta/v2/json"
+    
+    query = (
+        f'subject:"{subject_query}" '
+        f'AND type:Journal '
+        f'AND (journal:"Nature" OR journal:"Nature {subject_query}") '
+        f'sort:date'
+    )
+    
     params = {
-        "q": "subject:Astronomy", 
+        "q": query, 
         "p": 5,
+        "s": 1,
         "api_key": SPRINGER_API_KEY
     }
 
@@ -260,7 +267,6 @@ def fetch_springer_papers() -> List[Dict]:
             
             for record in records:
                 title = record.get('title', '제목 없음')
-                
                 raw_abstract = record.get('abstract', '내용 없음')
                 cleaned_desc = clean_html(raw_abstract)
 
@@ -274,7 +280,6 @@ def fetch_springer_papers() -> List[Dict]:
                     link = urls[0].get('value')
 
                 pub_date = record.get('publicationDate', datetime.now().strftime("%Y-%m-%d"))
-
                 source = record.get('publicationName', 'Springer Nature')
 
                 papers.append({
@@ -285,10 +290,10 @@ def fetch_springer_papers() -> List[Dict]:
                     "source": source
                 })
         else:
-            print(f"Springer API Error: {response.status_code}")
+            print(f"Springer API Error ({subject_query}): {response.status_code}")
             
     except Exception as e:
-        print(f"Error fetching Springer papers: {e}")
+        print(f"Error fetching papers for {subject_query}: {e}")
 
     return papers
 
@@ -389,50 +394,54 @@ def collect_and_process_data():
         all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
     
     print("논문 데이터 처리 및 번역 중...")
-    raw_papers = fetch_springer_papers()
     
-    if raw_papers:
-        paper_titles = [p['title'] for p in raw_papers]
+    field_map = {
+        "천문·우주": "Astronomy",
+        "인지·신경": "Neuroscience",
+        "물리학": "Physics",
+        "생명과학": "Biology",
+        "기타": "Science"
+    }
+
+    for field_kr, field_en in field_map.items():
+        field_papers = fetch_springer_papers(field_en)
         
-        translated_papers = paper_titles 
+        if field_papers:
+            if HAS_GENAI and PAPER_API_KEY and paper_model:
+                paper_titles = [p['title'] for p in field_papers]
+                
+                prompt = f""" 
+                당신은 전문 과학 번역가입니다. 아래 논문 제목들을 자연스럽고 학술적인 한국어로 번역하세요.
+                JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
+                {json.dumps(paper_titles, ensure_ascii=False)}
+                """
+                response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
+                
+                if response:
+                    try:
+                        match = re.search(r'\[.*\]', response.text, re.DOTALL)
+                        if match:
+                            translated_titles = json.loads(match.group())
+                            for i, p in enumerate(field_papers):
+                                if i < len(translated_titles):
+                                    p['title'] = translated_titles[i]
+                    except Exception:
+                        print(f"{field_kr} 논문 번역 파싱 실패, 원문 유지")
 
-        if HAS_GENAI and PAPER_API_KEY and paper_model:
-            print("논문 전용 키를 사용하여 번역 시도...")
-            prompt = f""" 
-            당신은 전문 과학 번역가입니다. 아래 논문 제목 리스트를 자연스럽고 학술적인 한국어로 번역하세요.
-            - JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
-            [텍스트 리스트]
-            {json.dumps(paper_titles, ensure_ascii=False)}
-            """
-            response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
-            
-            if response:
-                try:
-                    match = re.search(r'\[.*\]', response.text, re.DOTALL)
-                    if match:
-                        translated_papers = json.loads(match.group())
-                except Exception:
-                    print("논문 번역 결과 파싱 실패. 원문을 유지합니다.")
-        else:
-            print("ℹ️ 알림: PAPER_API_KEY가 없어 논문 번역을 건너뜁니다.")
-
-        for i, p in enumerate(raw_papers):
-            if i < len(translated_papers): p['title'] = translated_papers[i]
-
-    all_data["천문·우주"]["papers"] = raw_papers
+            all_data[field_kr]["papers"] = field_papers
 
     static_papers = [
-        {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature"},
-        {"title": "사이언스", "desc": "임시", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
-        {"title": "왕립학회", "desc": "임시", "link": "https://royalsociety.org/", "source": "Royal Society"}
+        {"title": "네이처 천문학 (Nature Astronomy)", "desc": "저널 메인 페이지", "link": "https://www.nature.com/natastron/", "source": "Nature"},
+        {"title": "사이언스 (Science)", "desc": "천문학 섹션", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
+        {"title": "왕립학회 (Royal Society)", "desc": "공식 홈페이지", "link": "https://royalsociety.org/", "source": "Royal Society"}
     ]
-
     all_data["천문·우주"]["papers"].extend(static_papers)
 
     all_data["천문·우주"]["data"] = [
-        {"title": "나사", "desc": "임시", "link": "https://www.nasa.gov/", "source": "NASA"},
-        {"title": "유럽 우주국", "desc": "임시", "link": "https://www.esa.int/", "source": "ESA"},
+        {"title": "NASA", "desc": "미 항공우주국", "link": "https://www.nasa.gov/", "source": "NASA"},
+        {"title": "ESA", "desc": "유럽 우주국", "link": "https://www.esa.int/", "source": "ESA"},
     ]
+    
     return all_data
 
 def generate_html(science_data, nasa_data):
