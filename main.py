@@ -233,26 +233,33 @@ def fetch_rss_news() -> List[Dict]:
             continue
     return all_news
 
-def fetch_springer_papers(subject_query) -> List[Dict]:
+def fetch_springer_papers(field_kr) -> List[Dict]:
 
     if not SPRINGER_API_KEY:
         print("ℹ️ 알림: SPRINGER_API_KEY가 설정되지 않아 논문 수집을 건너뜁니다.")
         return []
 
-    print(f"Springer Meta API(v2)로 논문 검색 중... ({subject_query})")
-    
     base_url = "http://api.springernature.com/meta/v2/json"
+
+    journal_id_map = {
+        "천문·우주": ["41550"],
+        "인지·신경": ["41593"],
+        "물리학": ["41567"],
+        "생명과학": ["41588", "41591", "41587"],
+        "기타": ["41586"]
+    }
+
+    target_ids = journal_id_map.get(field_kr, ["41586"])
     
-    query = (
-        f'subject:"{subject_query}" '
-        f'AND type:Journal '
-        f'sort:date'
-    )
+    journal_q = " OR ".join([f"journalid:{jid}" for jid in target_ids])
     
+    query = f"({journal_q}) AND type:Journal"
+
     params = {
-        "q": query, 
+        "q": query,
         "p": 5,
         "s": 1,
+        "sort": "date",
         "api_key": SPRINGER_API_KEY
     }
 
@@ -289,16 +296,18 @@ def fetch_springer_papers(subject_query) -> List[Dict]:
                     "source": source
                 })
         else:
-            print(f"Springer API Error ({subject_query}): {response.status_code}")
+            print(f"Springer API Error ({field_kr}): {response.status_code}")
             try:
                 error_resp = response.json()
-                msg = error_resp.get('message', '') or error_resp.get('error', {}).get('message', '')
+                msg = error_resp.get('message', '')
+                if not msg:
+                    msg = error_resp.get('error', {}).get('message', '')
                 print(f"Message: {msg}")
             except:
                 print(f"Raw Response: {response.text[:200]}")
 
     except Exception as e:
-        print(f"Error fetching papers for {subject_query}: {e}")
+        print(f"Error fetching papers for {field_kr}: {e}")
 
     return papers
 
