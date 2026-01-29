@@ -763,7 +763,7 @@ def generate_html(science_data, nasa_data):
             tabs.push(
                 {{ id: 'news', name: '뉴스' }}, 
                 {{ id: 'videos', name: '콘텐츠' }}, 
-                {{ id: 'papers', name: '논문' }}, 
+                {{ id: 'papers', name: '논문' }},
                 {{ id: 'data', name: '데이터' }}
             );
 
