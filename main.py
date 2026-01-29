@@ -15,7 +15,7 @@ except ImportError:
     HAS_GENAI = False
     print("google-generativeai 라이브러리가 없습니다.")
 
-NASA_API_KEY = None #os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
 GOOGLE_API_KEY = None #os.environ.get("GOOGLE_API_KEY") 
 TRANSLATE_API_KEY = None #os.environ.get("TRANSLATE_API_KEY")
 MODEL_NAME = 'gemini-2.5-flash-lite' 
