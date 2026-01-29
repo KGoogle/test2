@@ -15,10 +15,13 @@ except ImportError:
     HAS_GENAI = False
     print("google-generativeai 라이브러리가 없습니다.")
 
-NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-GOOGLE_API_KEY = None #os.environ.get("GOOGLE_API_KEY") 
-TRANSLATE_API_KEY = None #os.environ.get("TRANSLATE_API_KEY")
-PAPER_API_KEY = None # os.environ.get("PAPER_API_KEY")
+NASA_API_KEY = os.environ.get('NASA_API_KEY')
+SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
+
+GOOGLE_API_KEY = None      # os.environ.get("GOOGLE_API_KEY") 
+TRANSLATE_API_KEY = None   # os.environ.get("TRANSLATE_API_KEY")
+PAPER_API_KEY = None       # os.environ.get("PAPER_API_KEY")
+
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
 classify_model = None
@@ -230,33 +233,63 @@ def fetch_rss_news() -> List[Dict]:
             continue
     return all_news
 
-def fetch_rss_papers() -> List[Dict]:
-    papers = []
-    sources = [
-        {"url": "https://www.nature.com/natastron.rss", "source": "Nature Astronomy"},
-        {"url": "https://www.nature.com/subjects/astronomy-and-planetary-science/nature.rss", "source": "Nature"}
-    ]
+def fetch_springer_papers() -> List[Dict]:
+    """
+    Springer Nature API를 사용하여 'Astronomy' 관련 최신 논문을 가져옵니다.
+    """
+    if not SPRINGER_API_KEY:
+        print("ℹ️ 알림: SPRINGER_API_KEY가 설정되지 않아 논문 수집을 건너뜁니다.")
+        return []
 
-    print("논문(Nature) 피드 읽는 중...")
-    for src in sources:
-        try:
-            feed = feedparser.parse(src["url"])
-            for entry in feed.entries[:5]:
-                raw_desc = entry.get('summary', entry.get('description', '내용 없음'))
+    print("Springer API로 논문 검색 중...")
+    
+    base_url = "http://api.springernature.com/meta/v2/json"
+    params = {
+        "q": "subject:Astronomy", 
+        "p": 5,
+        "api_key": SPRINGER_API_KEY
+    }
+
+    papers = []
+    try:
+        response = requests.get(base_url, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            records = data.get('records', [])
+            
+            for record in records:
+                title = record.get('title', '제목 없음')
                 
-                cleaned_desc = clean_html(raw_desc)
+                raw_abstract = record.get('abstract', '내용 없음')
+                cleaned_desc = clean_html(raw_abstract)
+
+                link = ""
+                urls = record.get('url', [])
+                for u in urls:
+                    if u.get('format') == 'html':
+                        link = u.get('value')
+                        break
+                if not link and urls:
+                    link = urls[0].get('value')
+
+                pub_date = record.get('publicationDate', datetime.now().strftime("%Y-%m-%d"))
+
+                source = record.get('publicationName', 'Springer Nature')
 
                 papers.append({
-                    "title": entry.title,
+                    "title": title,
                     "desc": cleaned_desc,
-                    "desc": entry.get('summary', entry.get('description', '내용 없음')),
-                    "link": entry.link,
-                    "date": entry.get('published', datetime.now().strftime("%Y-%m-%d")),
-                    "source": src["source"]
+                    "link": link,
+                    "date": pub_date,
+                    "source": source
                 })
-        except Exception as e:
-            print(f"Error fetching papers from {src['source']}: {e}")
-            continue
+        else:
+            print(f"Springer API Error: {response.status_code}")
+            
+    except Exception as e:
+        print(f"Error fetching Springer papers: {e}")
+
     return papers
 
 def fetch_and_process_videos():
@@ -356,7 +389,7 @@ def collect_and_process_data():
         all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
     
     print("논문 데이터 처리 및 번역 중...")
-    raw_papers = fetch_rss_papers()
+    raw_papers = fetch_springer_papers()
     
     if raw_papers:
         paper_titles = [p['title'] for p in raw_papers]
@@ -863,7 +896,7 @@ def generate_html(science_data, nasa_data):
             tabs.push(
                 {{ id: 'news', name: '뉴스' }}, 
                 {{ id: 'videos', name: '콘텐츠' }}, 
-                {{ id: 'papers', name: '논문(수정중)' }},
+                {{ id: 'papers', name: '논문' }},
                 {{ id: 'data', name: '데이터' }}
             );
 
@@ -888,7 +921,7 @@ def generate_html(science_data, nasa_data):
                                 <span class="nasa-tag">NASA APOD TODAY</span>
                                 <div class="nasa-actions">
                                     <a href="${{nasa.hdurl || nasa.url}}" target="_blank" class="btn-mini">HD 보기</a>
-                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 원본</a>
+                                    <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank" class="btn-mini">NASA 홈페이지</a>
                                 </div>
                             </div>
                             <div class="nasa-title">${{nasa.title}}</div>
@@ -935,13 +968,27 @@ def generate_html(science_data, nasa_data):
                                 <span>${{p.date || ''}}</span>
                             </div>
                             <a href="${{p.link}}" target="_blank" class="card-title">${{p.title}}</a>
+                            
                             <details>
-                                <summary>Abstract / 내용 보기</summary>
+                                <summary>Abstract</summary>
                                 <div class="abstract-text">${{p.desc}}</div>
                             </details>
                         </div>`).join('') + '</div>';
                 }} else {{
-                    html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 논문 정보를 준비 중입니다.</div>`;
+                    html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 논문 정보를 준비 중입니다.<br>(API 키 확인 필요)</div>`;
+                }}
+
+            }} else if (currentType === 'data') {{
+                const list = science.data || [];
+                if (list.length > 0) {{
+                     html = '<div class="card-grid">' + list.map(p => `
+                        <a href="${{p.link}}" target="_blank" class="card">
+                            <span class="source-tag">${{p.source}}</span>
+                            <div class="card-title">${{p.title}}</div>
+                            <div class="card-desc" style="font-size:0.9rem; color:#888;">${{p.desc}}</div>
+                        </a>`).join('') + '</div>';
+                }} else {{
+                    html = `<div style="padding:100px; text-align:center; color:#666;">데이터 정보를 준비 중입니다.</div>`;
                 }}
             }}
             container.innerHTML = html;
