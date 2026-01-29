@@ -37,6 +37,8 @@ jobs:
           NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           TRANSLATE_API_KEY: ${{ secrets.TRANSLATE_API_KEY }}
+          PAPER_API_KEY: ${{ secrets.PAPER_API_KEY }}
+          SPRINGER_API_KEY: ${{ secrets.SPRINGER_API_KEY }}
         run: python main.py
 
       - name: Commit and Push
