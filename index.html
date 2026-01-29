@@ -246,10 +246,9 @@
             brainCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
             brainCamera.position.set(0, 0, 200);
 
-            brainRenderer = new THREE.WebGLRenderer({ antialias: false });
+            brainRenderer = new THREE.WebGLRenderer({ antialias: true });
             brainRenderer.setSize(width, height);
-            brainRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
-            
+            brainRenderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(brainRenderer.domElement);
 
             brainControls = new OrbitControls(brainCamera, brainRenderer.domElement);
@@ -260,7 +259,7 @@
             brainControls.enablePan = false;
 
             const renderScene = new RenderPass(brainScene, brainCamera);
-            if (false) {
+            
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0;
             bloomPass.strength = 0.5;
@@ -282,22 +281,17 @@
 
         function createCircleTexture() {
             const canvas = document.createElement('canvas');
-    canvas.width = 64; // 크기를 줄여 메모리 절약 (128 -> 64)
-    canvas.height = 64;
-    const context = canvas.getContext('2d');
-    
-    // 중심에서 바깥으로 퍼지는 그라데이션 (빛나는 효과 흉내)
-    const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
-    
-    // 색상을 더 밝고(Hot) 투명하게 조절
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     // 중심: 완전 흰색
-    gradient.addColorStop(0.3, 'rgba(180, 200, 255, 0.5)'); // 중간: 푸른 빛
-    gradient.addColorStop(0.5, 'rgba(100, 150, 255, 0.2)'); // 외곽: 흐릿
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');           // 끝: 투명
-    
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 64, 64);
-    return new THREE.CanvasTexture(canvas);
+            canvas.width = 128;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(200,200,255,0.8)');
+            gradient.addColorStop(0.8, 'rgba(150,150,255,0.1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 128, 128);
+            return new THREE.CanvasTexture(canvas);
         }
 
         function createDigitalBrain(data) {
@@ -395,7 +389,7 @@
         function animateBrain() {
             animationIdBrain = requestAnimationFrame(animateBrain);
             if(brainControls) brainControls.update();
-            if(brainGroup) brainGroup.rotation.z += 0.005;
+            if(brainGroup) brainGroup.rotation.z += 0.002;
             if(brainComposer) brainComposer.render();
         }
 
@@ -451,7 +445,7 @@
             tabs.push(
                 { id: 'news', name: '뉴스' }, 
                 { id: 'videos', name: '콘텐츠' }, 
-                { id: 'papers', name: '논문' }, 
+                { id: 'papers', name: '논문' },
                 { id: 'data', name: '데이터' }
             );
 
@@ -529,21 +523,7 @@
             container.innerHTML = html;
         }
 
-        const observer = new IntersectionObserver((entries) => {
-    
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            if (currentField === "천문·우주") animateUniverse();
-            else if (currentField === "인지·신경" && brainInitialized) animateBrain();
-        } else {
-            if (animationIdUniverse) cancelAnimationFrame(animationIdUniverse);
-            if (animationIdBrain) cancelAnimationFrame(animationIdBrain);
-        }
-    });
-}, { threshold: 0.1 });
-
         initUniverse();
-        observer.observe(headerContainer);
         window.showField('천문·우주');
         
     </script>
