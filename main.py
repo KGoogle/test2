@@ -503,7 +503,7 @@ def generate_html(science_data, nasa_data):
         .source-tag {{ font-size: 10px; background: #fff; color: #000; padding: 2px 6px; border-radius: 2px; position: absolute; top: 15px; right: 15px; font-weight: bold; z-index: 2; }}
         .ai-tag {{ font-size: 10px; color: #888; border: 1px solid #333; padding: 2px 8px; border-radius: 12px; display: inline-block; margin-bottom: 12px; align-self: flex-start; }}
         .card-title {{ font-size: 1.1rem; font-weight: 600; color: #ffffff; margin-bottom: 12px; line-height: 1.4; padding-right: 10px; }}
-        .card-desc {{ font-size: 0.9rem; color: #888; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }}
+        .card-desc {{ font-size: 0.9rem; color: #888; margin-bottom: 15px; word-break: keep-all; line-height: 1.6; }}
         .card-meta {{ font-size: 0.8rem; color: #666; margin-top: auto; letter-spacing: 0.05em; }}
         
         .video-card .thumb-wrapper {{ width: 100%; padding-top: 56.25%; position: relative; margin: -25px -25px 15px -25px; background: #222; }}
@@ -512,6 +512,16 @@ def generate_html(science_data, nasa_data):
         .video-card .play-icon {{ position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }}
         .video-card .play-icon::after {{ content:''; display: block; width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 14px solid #fff; margin-left: 4px; }}
         
+        .paper-card {{ display: block; position: relative; }}
+        .paper-card .card-meta {{ display: flex; justify-content: space-between; margin-bottom: 10px; margin-top: 0; }}
+        .paper-card .source-tag {{ position: static; display: inline-block; margin-right: 10px; background: #222; color: #fff; border: 1px solid #333; }}
+        
+        details {{ margin-top: 15px; border-top: 1px solid #222; padding-top: 12px; }}
+        summary {{ cursor: pointer; color: #777; font-size: 0.85rem; list-style: none; outline: none; font-weight: bold; transition: color 0.2s; }}
+        summary:hover {{ color: #aaa; }}
+        summary::-webkit-details-marker {{ display: none; }}
+        .abstract-text {{ margin-top: 10px; font-size: 0.9rem; color: #bbb; text-align: justify; line-height: 1.6; word-break: keep-all; }}
+
         @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(15px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     </style>
     
@@ -915,17 +925,23 @@ def generate_html(science_data, nasa_data):
                         <div class="card-meta">${{new Date(v.date).toISOString().split('T')[0]}}</div>
                     </a>`).join('') + '</div>';
             
-            }} else if (currentType === 'papers' || currentType === 'data') {{
-                const list = science[currentType] || [];
+            }} else if (currentType === 'papers') {{
+                const list = science.papers || [];
                 if (list.length > 0) {{
                      html = '<div class="card-grid">' + list.map(p => `
-                        <a href="${{p.link}}" target="_blank" class="card">
-                            <span class="source-tag">${{p.source}}</span>
-                            <div class="card-title">${{p.title}}</div>
-                            <div class="card-desc">${{p.desc}}</div>
-                        </a>`).join('') + '</div>';
+                        <div class="card paper-card">
+                            <div class="card-meta">
+                                <span class="source-tag">${{p.source}}</span>
+                                <span>${{p.date || ''}}</span>
+                            </div>
+                            <a href="${{p.link}}" target="_blank" class="card-title">${{p.title}}</a>
+                            <details>
+                                <summary>Abstract / 내용 보기</summary>
+                                <div class="abstract-text">${{p.desc}}</div>
+                            </details>
+                        </div>`).join('') + '</div>';
                 }} else {{
-                    html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 ${{currentType === 'papers' ? '논문' : '데이터'}} 정보를 준비 중입니다.</div>`;
+                    html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 논문 정보를 준비 중입니다.</div>`;
                 }}
             }}
             container.innerHTML = html;
