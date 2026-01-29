@@ -257,7 +257,7 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
 
     params = {
         "q": query,
-        "p": 5,
+        "p": 100,
         "s": 1,
         "sort": "date",
         "api_key": SPRINGER_API_KEY
@@ -272,9 +272,8 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
             records = data.get('records', [])
             
             for record in records:
-                title = record.get('title', '제목 없음')
-                
-                cleaned_desc = "" 
+                if not record.get('abstract'):
+                    continue
 
                 link = ""
                 urls = record.get('url', [])
@@ -285,27 +284,18 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
                 if not link and urls:
                     link = urls[0].get('value')
 
-                pub_date = record.get('publicationDate', datetime.now().strftime("%Y-%m-%d"))
-                source = record.get('publicationName', 'Springer Nature')
-
                 papers.append({
-                    "title": title,
-                    "desc": cleaned_desc,
+                    "title": record.get('title', '제목 없음'),
+                    "desc": "",
                     "link": link,
-                    "date": pub_date,
-                    "source": source
+                    "date": record.get('publicationDate', datetime.now().strftime("%Y-%m-%d")),
+                    "source": record.get('publicationName', 'Nature Portfolio')
                 })
+                
+                if len(papers) >= 5:
+                    break
         else:
             print(f"Springer API Error ({field_kr}): {response.status_code}")
-            try:
-                error_resp = response.json()
-                msg = error_resp.get('message', '')
-                if not msg:
-                    msg = error_resp.get('error', {}).get('message', '')
-                print(f"Message: {msg}")
-            except:
-                print(f"Raw Response: {response.text[:200]}")
-
     except Exception as e:
         print(f"Error fetching papers for {field_kr}: {e}")
 
@@ -444,7 +434,7 @@ def collect_and_process_data():
 
     static_papers = [
         {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/", "source": "Nature"},
-        {"title": "네이처 천문학", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature"},
+        {"title": "네이처 천문학", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature Astronomy"},
         {"title": "사이언스", "desc": "임시", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
         {"title": "왕립학회", "desc": "임시", "link": "https://royalsociety.org/", "source": "Royal Society"}
     ]
