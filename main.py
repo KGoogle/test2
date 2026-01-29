@@ -241,7 +241,7 @@ def fetch_springer_papers(subject_query) -> List[Dict]:
 
     print("Springer API로 논문 검색 중...")
     
-    base_url = "http://api.springernature.com/meta/v2/json"
+    base_url = "http://api.springernature.com/meta/v1/json"
     
     query = (
         f'subject:"{subject_query}" '
@@ -267,8 +267,8 @@ def fetch_springer_papers(subject_query) -> List[Dict]:
             
             for record in records:
                 title = record.get('title', '제목 없음')
-                raw_abstract = record.get('abstract', '내용 없음')
-                cleaned_desc = clean_html(raw_abstract)
+                
+                cleaned_desc = "" 
 
                 link = ""
                 urls = record.get('url', [])
