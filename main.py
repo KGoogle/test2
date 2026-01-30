@@ -17,32 +17,17 @@ except ImportError:
 
 NASA_API_KEY = os.environ.get('NASA_API_KEY')
 SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
-
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
-TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY")
-PAPER_API_KEY = os.environ.get("PAPER_API_KEY")
 
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
 classify_model = None
-translate_model = None
-paper_model = None
 
 if HAS_GENAI and GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
     classify_model = genai.GenerativeModel(MODEL_NAME)
 else:
     print("ℹ️ 알림: GOOGLE_API_KEY가 설정되지 않아 AI 분류를 건너뜁니다.")
-
-if HAS_GENAI and TRANSLATE_API_KEY:
-    translate_model = genai.GenerativeModel(MODEL_NAME)
-else:
-    print("ℹ️ 알림: TRANSLATE_API_KEY가 설정되지 않아 AI 번역을 건너뜁니다.")
-
-if HAS_GENAI and PAPER_API_KEY:
-    paper_model = genai.GenerativeModel(MODEL_NAME)
-else:
-    print("ℹ️ 알림: PAPER_API_KEY가 설정되지 않아 논문 번역을 건너뜁니다.")
 
 def clean_html(raw_html):
     if not raw_html:
@@ -56,10 +41,10 @@ DB_FILE = "science_data.db"
 
 RSS_SOURCES = [
     {"url": "https://www.sciencedaily.com/rss/top.xml", "fixed_category": None},
-    {"url": "https://phys.org/rss-feed/breaking/", "fixed_category": None}, #메타데이터 있음
+    {"url": "https://phys.org/rss-feed/breaking/", "fixed_category": None},
     {"url": "https://www.space.com/feeds/articletype/news", "fixed_category": "천문·우주"},
     {"url": "https://www.scientificamerican.com/platform/syndication/rss/", "fixed_category": None},
-    {"url": "https://www.quantamagazine.org/feed/", "fixed_category": None} #메타데이터 있음
+    {"url": "https://www.quantamagazine.org/feed/", "fixed_category": None}
 ]
 
 SCIENCE_RSS_URL = "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=science"
@@ -93,35 +78,14 @@ def call_gemini_with_retry(model, prompt, api_key, retries=2):
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+
     c.execute('''CREATE TABLE IF NOT EXISTS videos (
-                    id TEXT PRIMARY KEY,
-                    title TEXT,
-                    link TEXT,
-                    thumbnail TEXT,
-                    pub_date TEXT,
-                    category TEXT,
-                    source TEXT
-                )''')
-    conn.commit()
-    conn.close()
+                    id TEXT PRIMARY KEY, title TEXT, link TEXT, thumbnail TEXT, 
+                    pub_date TEXT, category TEXT, source TEXT)''')
 
-def is_video_exists(video_id):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT 1 FROM videos WHERE id = ?", (video_id,))
-    exists = c.fetchone() is not None
-    conn.close()
-    return exists
-
-def save_video_to_db(video_data):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    
-    category = video_data['tags'][0]
-    c.execute('''INSERT OR REPLACE INTO videos (id, title, link, thumbnail, pub_date, category, source)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)''',
-              (video_data['id'], video_data['title'], video_data['link'], 
-               video_data['thumbnail'], video_data['date'], category, video_data['source']))
+    c.execute('''CREATE TABLE IF NOT EXISTS articles (
+                    link TEXT PRIMARY KEY, title TEXT, pub_date TEXT, 
+                    category TEXT, source TEXT, type TEXT)''')
     conn.commit()
     conn.close()
 
@@ -139,75 +103,66 @@ def get_latest_videos(category=None, limit=8):
     conn.close()
     return [{"title": r[0], "link": r[1], "thumbnail": r[2], "date": r[3], "source": r[4]} for r in rows]
 
-def translate_content(text_list: List[str]) -> List[str]:
-    if not translate_model or not text_list or not TRANSLATE_API_KEY:
-        return text_list
-    prompt = f""" 
-    당신은 전문 과학 번역가입니다. 아래 텍스트 리스트를 자연스럽고 학술적인 한국어로 번역하세요.
-    - JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
-    [텍스트 리스트]
-    {json.dumps(text_list, ensure_ascii=False)}
-    """
-    response = call_gemini_with_retry(translate_model, prompt, TRANSLATE_API_KEY)
-    if response:
-        try:
-            match = re.search(r'\[.*\]', response.text, re.DOTALL)
-            if match:
-                return json.loads(match.group())
-        except Exception:
-            pass
-    return text_list
-
-def classify_data_batch(items: List[Dict]) -> List[Dict]:
-    if not items or not classify_model or not GOOGLE_API_KEY:
-        return []
-    context = ""
-    for i, item in enumerate(items):
-        desc = item.get('desc', '')
-        context += f"ID: {i}\n제목: {item['title']}\n내용: {desc[:150]}\n---\n"
-    prompt = f"""
-    당신은 과학 전문 큐레이터입니다. 아래 콘텐츠를 분석하여 [카테고리 후보] 중 관련된 것을 모두 선택해 태그를 다세요.
-    
-    [중요 규칙]
-    1. 내용은 여러 분야에 걸쳐 있을 수 있으므로 관련된 카테고리는 모두 나열하세요.
-    2. 단, **가장 핵심이 되는(가장 관련도가 높은) 카테고리를 반드시 배열의 첫 번째**에 두세요. 이 첫 번째 태그가 분류 기준이 됩니다.
-    3. JSON 리스트 형식으로만 응답하세요.
-    
-    [카테고리 후보] {', '.join(SCIENCE_FIELDS)}
-    
-    [응답 예시]
-    [ {{"id": 0, "tags": ["가장관련된분야", "부차적분야"]}} ]
-    
-    [데이터]
-    {context}
-    """
-    response = call_gemini_with_retry(classify_model, prompt, GOOGLE_API_KEY)
-    if response:
-        try:
-            match = re.search(r'\[.*\]', response.text, re.DOTALL)
-            if match:
-                results = json.loads(match.group())
-                result_map = {res['id']: res.get('tags', []) for res in results}
-                for i, item in enumerate(items):
-                    item['tags'] = result_map.get(i, [])
-                return items
-        except Exception:
-            pass
-    return []
-
 def get_nasa_data():
     url = f"https://api.nasa.gov/planetary/apod?api_key={NASA_API_KEY}"
     try:
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             data = response.json()
-            translated = translate_content([data.get('title', ''), data.get('explanation', '')])
-            data['title'] = translated[0]
-            data['explanation'] = translated[1]
             return data
     except Exception:
         pass
     return None
+
+def classify_and_save_to_db(items: List[Dict], item_type: str):
+    if not items or not GOOGLE_API_KEY: return
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    
+    new_items = []
+    for it in items:
+        uid = it.get('id') if item_type == 'video' else it.get('link')
+        table = 'videos' if item_type == 'video' else 'articles'
+        col = 'id' if item_type == 'video' else 'link'
+        c.execute(f"SELECT 1 FROM {table} WHERE {col} = ?", (uid,))
+        if not c.fetchone(): new_items.append(it)
+    conn.close()
+
+    if not new_items: return
+    print(f"새로운 {item_type} {len(new_items)}개 AI 분류 시작...")
+
+    for i in range(0, len(new_items), 100):
+        batch = new_items[i:i+100]
+        context = "\n".join([f"ID:{idx} | Title:{it['title']}" for idx, it in enumerate(batch)])
+        
+        prompt = f"""
+        Analyze science titles and pick categories from: {', '.join(SCIENCE_FIELDS)}.
+        The FIRST category must be the most relevant.
+        Return ONLY a JSON array: [{{"id": 0, "tags": ["Category1", "Category2"]}}]
+        [Titles]:
+        {context}
+        """
+        
+        response = call_gemini_with_retry(classify_model, prompt, GOOGLE_API_KEY)
+        if response:
+            try:
+                results = json.loads(re.search(r'\[.*\]', response.text, re.DOTALL).group())
+                res_map = {r['id']: r['tags'] for r in results}
+                
+                conn = sqlite3.connect(DB_FILE)
+                curr = conn.cursor()
+                for idx, item in enumerate(batch):
+                    cat = res_map.get(idx, ["기타"])[0]
+                    if item_type == 'video':
+                        curr.execute("INSERT OR REPLACE INTO videos VALUES (?,?,?,?,?,?,?)",
+                                   (item['id'], item['title'], item['link'], item['thumbnail'], item['date'], cat, item['source']))
+                    else:
+                        curr.execute("INSERT OR REPLACE INTO articles VALUES (?,?,?,?,?,?)",
+                                   (item['link'], item['title'], item['date'], cat, item['source'], item_type))
+                conn.commit()
+                conn.close()
+            except: print("AI 응답 해석 실패, 다음 배치로 넘어감")
 
 def fetch_rss_news() -> List[Dict]:
     all_news = []
@@ -344,159 +299,50 @@ def fetch_science_org_papers() -> List[Dict]:
         print(f"Science RSS 에러: {e}")
     return papers
 
-def ai_process_papers(papers: List[Dict]) -> List[Dict]:
-    """PAPER_API_KEY를 사용하여 논문의 분류와 번역을 한 번에 수행합니다."""
-    if not papers or not paper_model or not PAPER_API_KEY:
-        return papers
 
-    context = ""
-    for i, p in enumerate(papers):
-        context += f"ID: {i}\nTitle: {p['title']}\nAbstract: {p['desc'][:200]}\n---\n"
 
-    prompt = f"""
-    당신은 전문 과학 커뮤니케이터입니다. 아래 논문 데이터를 분석하여 두 가지 작업을 수행하세요.
-    1. 분류: [카테고리 후보] 중 가장 적합한 분야 하나를 선택하세요.
-    2. 번역: 논문 제목을 학술적인 한국어로 번역하세요.
-    
-    [카테고리 후보]: {', '.join(SCIENCE_FIELDS)}
-    
-    [응답 형식]: 반드시 아래와 같은 JSON 배열 형식으로만 응답하세요. 다른 설명은 하지 마세요.
-    [ {{"id": 0, "category": "분류분야", "translated_title": "번역제목"}} ]
-    
-    [데이터]:
-    {context}
-    """
-
-    response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
-    if response:
-        try:
-            match = re.search(r'\[.*\]', response.text, re.DOTALL)
-            if match:
-                results = json.loads(match.group())
-                for res in results:
-                    idx = res['id']
-                    if idx < len(papers):
-                        papers[idx]['title'] = res['translated_title']
-                        papers[idx]['category_ai'] = res['category']
-        except Exception: pass
-    return papers
-
-def fetch_and_process_videos():
-    print("유튜브 영상 확인 중...")
-    new_videos = []
-    
+def fetch_videos() -> List[Dict]:
+    print("유튜브 영상 목록 가져오는 중...")
+    all_vids = []
     for source in YOUTUBE_SOURCES:
         try:
             url = f"https://www.youtube.com/feeds/videos.xml?{'playlist_id' if source.get('type')=='playlist' else 'channel_id'}={source['id']}"
             feed = feedparser.parse(url)
-            if not feed.entries: continue
-            
-            for entry in feed.entries[:]:
-                video_id = entry.yt_videoid
-                
-                if is_video_exists(video_id): continue 
-                
-                thumbnail = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
-                if 'media_thumbnail' in entry: thumbnail = entry.media_thumbnail[0]['url']
-                
-                new_videos.append({
-                    "id": video_id,
+            for entry in feed.entries[:3]:
+                all_vids.append({
+                    "id": entry.yt_videoid,
                     "title": entry.title,
                     "link": entry.link,
-                    "desc": entry.get('summary', ''),
-                    "thumbnail": thumbnail,
+                    "thumbnail": f"https://img.youtube.com/vi/{entry.yt_videoid}/mqdefault.jpg",
                     "date": entry.published,
-                    "source": entry.get('author', 'Unknown'),
-                    "tags": [] 
+                    "source": entry.get('author', 'YouTube')
                 })
-        except Exception:
-            continue
-    
-    MAX_PROCESS_LIMIT = 10
-    if new_videos:
-        print(f"새로운 영상 총 {len(new_videos)}개 발견.")
-        videos_to_process = new_videos[:MAX_PROCESS_LIMIT]
-        
-        titles = [v['title'] for v in videos_to_process]
-        translated_titles = translate_content(titles)
-        for i, v in enumerate(videos_to_process):
-            if i < len(translated_titles): v['title'] = translated_titles[i]
-        classified_videos = classify_data_batch(videos_to_process)
-        
-        saved_count = 0
-        for video in classified_videos:
-            if video.get('tags') and len(video['tags']) > 0:
-                save_video_to_db(video)
-                saved_count += 1
-        if not GOOGLE_API_KEY:
-            print("ℹ️ 알림: API 키가 없어 분류 및 저장을 스킵했습니다.")
-        else:
-            print(f"영상 처리 완료: {saved_count}개 DB 저장됨.")
-    else:
-        print("새로운 영상이 없습니다.")
+        except: continue
+    return all_vids
 
 def collect_and_process_data():
     init_db()
-    fetch_and_process_videos()
     
+    raw_vids = fetch_videos()
     raw_news = fetch_rss_news()
-    print(f"뉴스 {len(raw_news)}개 처리 중...")
-    
-    texts = [item['title'] for item in raw_news]
-    translated_all = []
-    for i in range(0, len(texts), 20):
-        translated_all.extend(translate_content(texts[i:i+20]))
-    for i, item in enumerate(raw_news):
-        if i < len(translated_all): item['title'] = translated_all[i]
-   
-    to_classify = [i for i in raw_news if not i["fixed_category"]]
-    if to_classify:
-        for i in range(0, len(to_classify), 5):
-            batch = to_classify[i:i+5]
-            classify_data_batch(batch)
-   
+    raw_papers = fetch_science_org_papers()
+    for field in SCIENCE_FIELDS: raw_papers.extend(fetch_springer_papers(field))
+
+    classify_and_save_to_db(raw_vids, 'video')
+    classify_and_save_to_db(raw_news, 'news')
+    classify_and_save_to_db(raw_papers, 'paper')
+
     all_data = {field: {"news": [], "videos": [], "papers": [], "data": []} for field in SCIENCE_FIELDS}
-    
-    for item in raw_news:
-        tags = item.get('tags')
-        category_candidate = item.get('fixed_category')
-        
-        if not category_candidate:
-            if tags and len(tags) > 0:
-                category_candidate = tags[0]
-            else:
-                category_candidate = "기타"
-        
-        matched = "기타"
-        for field in SCIENCE_FIELDS:
-            if category_candidate in field or field in category_candidate:
-                matched = field
-                break
-        all_data[matched]["news"].append(item)
-        
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
     for field in SCIENCE_FIELDS:
-        all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
-    
-    print("논문 데이터(Science RSS + Springer) 수집 및 AI 통합 처리 중...")
-    
-    all_raw_papers = fetch_science_org_papers()
-    
-    for field_kr in SCIENCE_FIELDS:
-        springer_list = fetch_springer_papers(field_kr)
-        for p in springer_list:
-            p['category_ai'] = field_kr
-        all_raw_papers.extend(springer_list)
-
-    processed_papers = ai_process_papers(all_raw_papers)
-
-    for p in processed_papers:
-        cat = p.get('category_ai', '기타')
-        matched_field = "기타"
-        for field in SCIENCE_FIELDS:
-            if cat in field or field in cat:
-                matched_field = field
-                break
-        all_data[matched_field]["papers"].append(p)
+        c.execute("SELECT title, link, source, pub_date, type FROM articles WHERE category = ? ORDER BY pub_date DESC LIMIT 15", (field,))
+        for r in c.fetchall():
+            item = {"title": r[0], "link": r[1], "source": r[2], "date": r[3]}
+            key = "news" if r[4] == 'news' else "papers"
+            all_data[field][key].append(item)
+        all_data[field]["videos"] = get_latest_videos(category=field, limit=8)
+    conn.close()
 
     neuro_journals = [
         {"title": "Neuron(AI가 선별 및 작성)", "desc": "신경과학 분야 최고의 권위를 자랑하며 세포 및 시스템 신경과학을 다룹니다.", "link": "https://www.cell.com/neuron/home", "source": "Cell Press"},
@@ -528,7 +374,7 @@ def collect_and_process_data():
 
     all_data["천문·우주"]["data"] = [
         {"title": "NASA ADS", "desc": "전 세계 천문학 논문 및 초록 통합 데이터베이스", "link": "https://ui.adsabs.harvard.edu/", "source": "NASA / SAO"},
-        {"title": "NASA Eyes", "desc": "실시간 데이터 기반의 3D 태양계 탐사 시뮬레이션", "link": "https://eyes.nasa.gov/", "source": "NASA JPL"},
+        {"title": "NASA Eyes", "desc": "실시간 데이터 기반 3D 태양계 탐사 시뮬레이션", "link": "https://eyes.nasa.gov/", "source": "NASA JPL"},
         {"title": "나사", "desc": "데이터가 너무 많아...", "link": "https://www.nasa.gov/", "source": "NASA"},
         {"title": "유럽 우주국", "desc": "구구중 버륭", "link": "https://www.esa.int/", "source": "ESA"}
     ]
@@ -1004,8 +850,8 @@ def generate_html(science_data, nasa_data):
             tabs.push(
                 {{ id: 'news', name: '뉴스' }}, 
                 {{ id: 'videos', name: '콘텐츠' }},
-                {{ id: 'papers', name: '논문(AI 정보는 임시)' }},
-                {{ id: 'data', name: '데이터(AI 정보는 임시)' }}
+                {{ id: 'papers', name: '논문' }},
+                {{ id: 'data', name: '데이터' }}
             );
 
             container.innerHTML = tabs.map(t => `
