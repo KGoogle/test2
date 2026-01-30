@@ -18,9 +18,9 @@ except ImportError:
 NASA_API_KEY = os.environ.get('NASA_API_KEY')
 SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
 
-GOOGLE_API_KEY = None      # os.environ.get("GOOGLE_API_KEY") 
-TRANSLATE_API_KEY = None   # os.environ.get("TRANSLATE_API_KEY")
-PAPER_API_KEY = None       # os.environ.get("PAPER_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
+TRANSLATE_API_KEY = os.environ.get("TRANSLATE_API_KEY")
+PAPER_API_KEY = os.environ.get("PAPER_API_KEY")
 
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
@@ -56,11 +56,13 @@ DB_FILE = "science_data.db"
 
 RSS_SOURCES = [
     {"url": "https://www.sciencedaily.com/rss/top.xml", "fixed_category": None},
-    {"url": "https://phys.org/rss-feed/breaking/", "fixed_category": None},
+    {"url": "https://phys.org/rss-feed/breaking/", "fixed_category": None}, #메타데이터 있음
     {"url": "https://www.space.com/feeds/articletype/news", "fixed_category": "천문·우주"},
     {"url": "https://www.scientificamerican.com/platform/syndication/rss/", "fixed_category": None},
-    {"url": "https://www.quantamagazine.org/feed/", "fixed_category": None}
+    {"url": "https://www.quantamagazine.org/feed/", "fixed_category": None} #메타데이터 있음
 ]
+
+SCIENCE_RSS_URL = "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=science"
 
 YOUTUBE_SOURCES = [
     {"type": "channel", "id": "UCsXVk37bltHxD1rDPwtNM8Q"}, 
@@ -220,7 +222,13 @@ def fetch_rss_news() -> List[Dict]:
             elif "quantamagazine" in source_info["url"]: source_name = "Quanta Magazine"
             else: source_name = "Science News"
             
-            for entry in feed.entries[:5]:
+            collected_count = 0
+            for entry in feed.entries:
+                if "space.com" in source_info["url"]:
+                    if hasattr(entry, 'tags'):
+                        if any(tag.term.strip() == "Entertainment" for tag in entry.tags):
+                            continue
+                
                 all_news.append({
                     "title": entry.title,
                     "desc": entry.get('summary', entry.get('description', '내용 없음')),
@@ -229,6 +237,11 @@ def fetch_rss_news() -> List[Dict]:
                     "source": source_name,
                     "fixed_category": source_info["fixed_category"]
                 })
+                
+                collected_count += 1
+                if collected_count >= 5:
+                    break
+                    
         except Exception:
             continue
     return all_news
@@ -301,6 +314,71 @@ def fetch_springer_papers(field_kr) -> List[Dict]:
     except Exception as e:
         print(f"Error fetching papers for {field_kr}: {e}")
 
+    return papers
+
+def fetch_science_org_papers() -> List[Dict]:
+    print("Science.org RSS 논문 필터링 및 수집 중...")
+    papers = []
+    try:
+        feed = feedparser.parse(SCIENCE_RSS_URL)
+        
+        valid_types = ["Research Article", "Review"]
+
+        for entry in feed.entries:
+            content_type = entry.get('dc_type', '')
+            
+            if any(vt in content_type for vt in valid_types):
+                papers.append({
+                    "title": entry.title,
+                    "desc": clean_html(entry.get('summary', entry.get('description', ''))),
+                    "link": entry.link,
+                    "date": entry.get('published', datetime.now().strftime("%Y-%m-%d")),
+                    "source": "Science"
+                })
+            
+            if len(papers) >= 10:
+                break
+                
+        print(f"Science.org에서 {len(papers)}개의 연구 논문을 선별했습니다.")
+    except Exception as e:
+        print(f"Science RSS 에러: {e}")
+    return papers
+
+def ai_process_papers(papers: List[Dict]) -> List[Dict]:
+    """PAPER_API_KEY를 사용하여 논문의 분류와 번역을 한 번에 수행합니다."""
+    if not papers or not paper_model or not PAPER_API_KEY:
+        return papers
+
+    context = ""
+    for i, p in enumerate(papers):
+        context += f"ID: {i}\nTitle: {p['title']}\nAbstract: {p['desc'][:200]}\n---\n"
+
+    prompt = f"""
+    당신은 전문 과학 커뮤니케이터입니다. 아래 논문 데이터를 분석하여 두 가지 작업을 수행하세요.
+    1. 분류: [카테고리 후보] 중 가장 적합한 분야 하나를 선택하세요.
+    2. 번역: 논문 제목을 학술적인 한국어로 번역하세요.
+    
+    [카테고리 후보]: {', '.join(SCIENCE_FIELDS)}
+    
+    [응답 형식]: 반드시 아래와 같은 JSON 배열 형식으로만 응답하세요. 다른 설명은 하지 마세요.
+    [ {{"id": 0, "category": "분류분야", "translated_title": "번역제목"}} ]
+    
+    [데이터]:
+    {context}
+    """
+
+    response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
+    if response:
+        try:
+            match = re.search(r'\[.*\]', response.text, re.DOTALL)
+            if match:
+                results = json.loads(match.group())
+                for res in results:
+                    idx = res['id']
+                    if idx < len(papers):
+                        papers[idx]['title'] = res['translated_title']
+                        papers[idx]['category_ai'] = res['category']
+        except Exception: pass
     return papers
 
 def fetch_and_process_videos():
@@ -399,54 +477,80 @@ def collect_and_process_data():
     for field in SCIENCE_FIELDS:
         all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
     
-    print("논문 데이터 처리 및 번역 중...")
+    print("논문 데이터(Science RSS + Springer) 수집 및 AI 통합 처리 중...")
     
-    field_list = ["천문·우주", "인지·신경", "물리학", "생명과학", "기타"]
+    all_raw_papers = fetch_science_org_papers()
+    
+    for field_kr in SCIENCE_FIELDS:
+        springer_list = fetch_springer_papers(field_kr)
+        for p in springer_list:
+            p['category_ai'] = field_kr
+        all_raw_papers.extend(springer_list)
 
-    for field_kr in field_list:
-        field_papers = fetch_springer_papers(field_kr)
-        
-        if not field_papers:
-            continue
+    processed_papers = ai_process_papers(all_raw_papers)
 
-        if HAS_GENAI and PAPER_API_KEY and paper_model:
-            paper_titles = [p['title'] for p in field_papers]
-            
-            prompt = f""" 
-            당신은 전문 과학 번역가입니다. 아래 논문 제목들을 자연스럽고 학술적인 한국어로 번역하세요.
-            JSON 배열 형식으로만 응답: ["번역1", "번역2", ...]
-            [대상 텍스트]
-            {json.dumps(paper_titles, ensure_ascii=False)}
-            """
-            
-            response = call_gemini_with_retry(paper_model, prompt, PAPER_API_KEY)
-            
-            if response:
-                try:
-                    match = re.search(r'\[.*\]', response.text, re.DOTALL)
-                    if match:
-                        translated_titles = json.loads(match.group())
-                        for i, p in enumerate(field_papers):
-                            if i < len(translated_titles):
-                                p['title'] = translated_titles[i]
-                except Exception as e:
-                    print(f"{field_kr} 논문 번역 파싱 실패 ({e}), 원문 유지")
+    for p in processed_papers:
+        cat = p.get('category_ai', '기타')
+        matched_field = "기타"
+        for field in SCIENCE_FIELDS:
+            if cat in field or field in cat:
+                matched_field = field
+                break
+        all_data[matched_field]["papers"].append(p)
 
-        all_data[field_kr]["papers"] = field_papers
-
-    static_papers = [
-        {"title": "네이처", "desc": "임시", "link": "https://www.nature.com/", "source": "Nature"},
-        {"title": "네이처 천문학", "desc": "임시", "link": "https://www.nature.com/natastron/", "source": "Nature Astronomy"},
-        {"title": "사이언스", "desc": "임시", "link": "https://www.science.org/topic/category/astronomy", "source": "Science"},
-        {"title": "왕립학회", "desc": "임시", "link": "https://royalsociety.org/", "source": "Royal Society"}
+    neuro_journals = [
+        {"title": "Neuron(AI가 선별 및 작성)", "desc": "신경과학 분야 최고의 권위를 자랑하며 세포 및 시스템 신경과학을 다룹니다.", "link": "https://www.cell.com/neuron/home", "source": "Cell Press"},
+        {"title": "Nature Neuroscience(AI가 선별 및 작성)", "desc": "신경과학 전 분야에서 가장 혁신적인 연구를 게재합니다.", "link": "https://www.nature.com/neuro/", "source": "Nature Portfolio"},
+        {"title": "Trends in Cognitive Sciences(AI가 선별 및 작성)", "desc": "인지과학 분야의 최신 흐름을 정리하는 최고 수준의 리뷰 저널입니다.", "link": "https://www.cell.com/trends/cognitive-sciences/home", "source": "Cell Press"}
     ]
-    all_data["천문·우주"]["papers"].extend(static_papers)
+    all_data["인지·신경"]["papers"].extend(neuro_journals)
+
+    physics_journals = [
+        {"title": "Physical Review Letters (PRL)(AI가 선별 및 작성)", "desc": "물리학 전 분야에서 가장 혁신적인 발견을 빠르게 보고하는 세계 최고 권위지입니다.", "link": "https://journals.aps.org/prl/", "source": "APS"},
+        {"title": "Nature Physics(AI가 선별 및 작성)", "desc": "기초 및 응용 물리학 전반의 중대한 성과를 다루는 프리미엄 저널입니다.", "link": "https://www.nature.com/nphys/", "source": "Nature Portfolio"},
+        {"title": "Reviews of Modern Physics(AI가 선별 및 작성)", "desc": "물리학의 특정 주제를 집대성한 논문들만 실리는 물리학계의 교과서입니다.", "link": "https://journals.aps.org/rmp/", "source": "APS"}
+    ]
+    all_data["물리학"]["papers"].extend(physics_journals)
+
+    bio_journals = [
+        {"title": "Cell(AI가 선별 및 작성)", "desc": "생명과학 분야의 정점에 있는 학술지로, 분자 및 세포 생물학 연구의 핵심입니다.", "link": "https://www.cell.com/cell/home", "source": "Cell Press"},
+        {"title": "Nature Methods(AI가 선별 및 작성)", "desc": "생명과학 연구의 새로운 실험 기법과 분석 기술을 다루는 영향력 있는 저널입니다.", "link": "https://www.nature.com/nmeth/", "source": "Nature Portfolio"},
+        {"title": "EMBO Journal(AI가 선별 및 작성)", "desc": "유럽 분자생물학 기구에서 발행하며, 분자생물학 분야에서 전통적인 권위를 가집니다.", "link": "https://www.embopress.org/journal/14602075", "source": "EMBO Press"}
+    ]
+    all_data["생명과학"]["papers"].extend(bio_journals)
+
+    astro_journals = [
+        {"title": "The Astrophysical Journal (ApJ)", "desc": "미국 천문학회에서 발행하며, 천체물리학 분야의 가장 권위 있는 학술지 중 하나입니다.", "link": "https://iopscience.iop.org/journal/0004-637X", "source": "AAS"},
+        {"title": "Monthly Notices of the RAS", "desc": "영국 왕립천문학회 저널로, 오랜 역사와 권위를 자랑합니다.", "link": "https://academic.oup.com/mnras", "source": "Oxford Univ Press"},
+        {"title": "Astronomy & Astrophysics", "desc": "유럽을 중심으로 발행되는 세계적인 천문학 저널입니다.", "link": "https://www.a-anda.org/", "source": "EDP Sciences"}
+    ]
+    all_data["천문·우주"]["papers"].extend(astro_journals)
 
     all_data["천문·우주"]["data"] = [
-        {"title": "나사", "desc": "임시", "link": "https://www.nasa.gov/", "source": "NASA"},
-        {"title": "유럽 우주국", "desc": "임시", "link": "https://www.esa.int/", "source": "ESA"},
+        {"title": "NASA ADS", "desc": "전 세계 천문학 논문 및 초록 통합 데이터베이스", "link": "https://ui.adsabs.harvard.edu/", "source": "NASA / SAO"},
+        {"title": "NASA Eyes", "desc": "실시간 데이터 기반의 3D 태양계 탐사 시뮬레이션", "link": "https://eyes.nasa.gov/", "source": "NASA JPL"},
+        {"title": "나사", "desc": "데이터가 너무 많아...", "link": "https://www.nasa.gov/", "source": "NASA"},
+        {"title": "유럽 우주국", "desc": "구구중 버륭", "link": "https://www.esa.int/", "source": "ESA"}
     ]
-    
+
+    all_data["인지·신경"]["data"] = [
+        {"title": "Allen Brain Map(AI가 선별 및 작성)", "desc": "뇌 유전자 발현 및 신경 회로에 대한 방대한 공개 데이터", "link": "https://portal.brain-map.org/", "source": "Allen Institute"},
+        {"title": "Human Connectome Project(AI가 선별 및 작성)", "desc": "인간의 뇌 신경 연결망 구조 파악을 위한 대규모 데이터 공유 플랫폼", "link": "https://www.humanconnectome.org/", "source": "NIH / WashU"},
+        {"title": "OpenNeuro(AI가 선별 및 작성)", "desc": "뇌 영상(MRI, EEG 등) 데이터를 무료로 공유하고 분석하는 오픈 플랫폼", "link": "https://openneuro.org/", "source": "Stanford"}
+    ]
+
+    all_data["물리학"]["data"] = [
+        {"title": "CERN Open Data(AI가 선별 및 작성)", "desc": "거대강입자가속기(LHC)에서 발생한 실제 입자 충돌 실험 데이터", "link": "https://opendata.cern.ch/", "source": "CERN"},
+        {"title": "NIST Physics Data(AI가 선별 및 작성)", "desc": "물리 상수, 원자 스펙트럼 등 표준 참조 데이터", "link": "https://www.nist.gov/pml/productsservices/physical-reference-data", "source": "NIST"},
+        {"title": "PhET Simulations(AI가 선별 및 작성)", "desc": "물리학 법칙을 시각적으로 이해하는 인터랙티브 시뮬레이션", "link": "https://phet.colorado.edu/ko/", "source": "Univ of Colorado"}
+    ]
+
+    all_data["생명과학"]["data"] = [
+        {"title": "NCBI(AI가 선별 및 작성)", "desc": "GenBank, PubMed 등 생명과학 데이터의 전 세계 허브", "link": "https://www.ncbi.nlm.nih.gov/", "source": "NIH"},
+        {"title": "RCSB PDB(AI가 선별 및 작성)", "desc": "전 세계 모든 단백질 및 생체 고분자의 3D 구조 데이터베이스", "link": "https://www.rcsb.org/", "source": "PDB"},
+        {"title": "UniProt(AI가 선별 및 작성)", "desc": "단백질 서열과 기능 정보를 집대성한 가장 포괄적인 자원", "link": "https://www.uniprot.org/", "source": "UniProt Consortium"}
+    ]
+
     return all_data
 
 def generate_html(science_data, nasa_data):
@@ -899,9 +1003,9 @@ def generate_html(science_data, nasa_data):
             
             tabs.push(
                 {{ id: 'news', name: '뉴스' }}, 
-                {{ id: 'videos', name: '콘텐츠' }}, 
-                {{ id: 'papers', name: '논문' }},
-                {{ id: 'data', name: '데이터' }}
+                {{ id: 'videos', name: '콘텐츠' }},
+                {{ id: 'papers', name: '논문(AI 정보는 임시)' }},
+                {{ id: 'data', name: '데이터(AI 정보는 임시)' }}
             );
 
             container.innerHTML = tabs.map(t => `
