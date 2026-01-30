@@ -1,11 +1,10 @@
-name: Auto Update Index HTML
+name: Auto Update Science Portal
 
 on:
-  push:
-    branches: ["main"]
+  schedule:
+    - cron: '0 13 * * *'
+  
   workflow_dispatch:
-  #schedule:
-    #- cron: '00 13 * * *'
 
 permissions:
   contents: write
@@ -16,13 +15,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 
-
-      - name: Checkout Main Branch
-        run: |
-          git checkout main
-          git pull origin main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,14 +22,13 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests google-generativeai feedparser
+        run: |
+          pip install requests google-generativeai feedparser
 
       - name: Run main.py
         env:
           NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          TRANSLATE_API_KEY: ${{ secrets.TRANSLATE_API_KEY }}
-          PAPER_API_KEY: ${{ secrets.PAPER_API_KEY }}
           SPRINGER_API_KEY: ${{ secrets.SPRINGER_API_KEY }}
         run: python main.py
 
@@ -48,12 +39,10 @@ jobs:
           
           git add index.html science_data.db
           
-          if ! git diff --quiet || ! git diff --staged --quiet; then
-            git commit -m "Update data [skip ci]"
-            
-            git pull --rebase -Xtheirs origin main
-            
+          if ! git diff --quiet --staged; then
+            git commit -m "chore: daily data update [skip ci]"
+            git pull --rebase origin main
             git push origin main
           else
-            echo "No changes to commit"
+            echo "업데이트할 데이터가 없습니다."
           fi
