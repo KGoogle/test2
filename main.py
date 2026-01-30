@@ -448,6 +448,34 @@ def generate_html(science_data, nasa_data):
             background-color: #000000; 
         }}
 
+        #physics-container {{ display: none; text-align: center; color: #fff; }}
+        .physics-symbol-wrapper {{ display: flex; flex-direction: column; align-items: center; }}
+        .physics-label {{ margin-bottom: 10px; opacity: 0.7; font-weight: 300; letter-spacing: 5px; font-size: 14px; }}
+        .glow {{ filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.3)); }}
+        .atom-svg {{ width: 180px; height: 180px; }}
+        .nucleus {{ fill: #fff; }}
+        .orbit {{ fill: none; stroke: rgba(255, 255, 255, 0.2); stroke-width: 1; }}
+        .electron {{ fill: #fff; }}
+        
+        #dna-outer-container {{ display: none; text-align: center; }}
+        .dna-header-wrapper {{
+            transform: rotate(-15deg); 
+            width: 240px; height: 320px; 
+            margin: 0 auto; position: relative;
+        }}
+        .dna-container {{ position: relative; width: 100%; height: 100%; }}
+        .dna-dot {{
+            position: absolute; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(0, 170, 255, 0.8) 30%, rgba(0, 80, 255, 0.1) 70%, transparent 100%);
+            mix-blend-mode: screen; filter: drop-shadow(0 0 5px rgba(0, 170, 255, 0.8));
+        }}
+        .dna-line {{
+            position: absolute; height: 1px;
+            background: linear-gradient(90deg, rgba(153, 187, 255, 0) 0%, rgba(153, 187, 255, 0.2) 50%, rgba(153, 187, 255, 0) 100%);
+            z-index: -1;
+        }}
+        .digital-glow {{ filter: drop-shadow(0 0 15px rgba(0, 170, 255, 0.4)); }}
+
         .header-content {{ position: relative; z-index: 1; pointer-events: none; transition: opacity 0.5s; }}
         
         header h1 {{
@@ -524,6 +552,40 @@ def generate_html(science_data, nasa_data):
         </div>
 
         <div id="brain-container"></div>
+
+        <div id="physics-container" class="header-content">
+            <div class="physics-symbol-wrapper">
+                <div class="physics-label">PHYSICS</div>
+                <svg class="atom-svg glow" viewBox="0 0 100 100">
+                    <circle class="nucleus" cx="50" cy="50" r="4" />
+                    <g style="transform-origin: 50% 50%; transform: rotate(0deg);">
+                        <ellipse class="orbit" cx="50" cy="50" rx="45" ry="15" />
+                        <circle class="electron" r="2">
+                            <animateMotion dur="3s" repeatCount="indefinite" path="M 5,50 a 45,15 0 1,0 90,0 a 45,15 0 1,0 -90,0" />
+                        </circle>
+                    </g>
+                    <g style="transform-origin: 50% 50%; transform: rotate(120deg);">
+                        <ellipse class="orbit" cx="50" cy="50" rx="45" ry="15" />
+                        <circle class="electron" r="2">
+                            <animateMotion dur="2.5s" repeatCount="indefinite" path="M 5,50 a 45,15 0 1,0 90,0 a 45,15 0 1,0 -90,0" />
+                        </circle>
+                    </g>
+                    <g style="transform-origin: 50% 50%; transform: rotate(240deg);">
+                        <ellipse class="orbit" cx="50" cy="50" rx="45" ry="15" />
+                        <circle class="electron" r="2">
+                            <animateMotion dur="3.5s" repeatCount="indefinite" path="M 5,50 a 45,15 0 1,0 90,0 a 45,15 0 1,0 -90,0" />
+                        </circle>
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <div id="dna-outer-container" class="header-content">
+            <div class="dna-header-wrapper">
+                <div class="dna-container digital-glow" id="dna-animation-box"></div>
+            </div>
+        </div>
+
     </header>
 
     <div class="container">
@@ -798,9 +860,66 @@ def generate_html(science_data, nasa_data):
             if(brainComposer) brainComposer.render();
         }}
 
+        let animationIdDNA;
+        let dnaDots = [];
+
+        function initDNA() {{
+            const dnaBox = document.getElementById('dna-animation-box');
+            if (dnaDots.length > 0) return; 
+            const totalRows = 20;
+            const waveGap = 0.32;
+            for (let i = 0; i < totalRows; i++) {{
+                const dot1 = document.createElement('div');
+                const dot2 = document.createElement('div');
+                const line = document.createElement('div');
+                dot1.className = 'dna-dot';
+                dot2.className = 'dna-dot';
+                line.className = 'dna-line';
+                dnaBox.appendChild(dot1);
+                dnaBox.appendChild(dot2);
+                dnaBox.appendChild(line);
+                dnaDots.push({{ dot1, dot2, line, angle: i * waveGap }});
+            }}
+        }}
+
+        function animateDNA() {{
+            const speed = 0.012;
+            const radius = 60;
+            dnaDots.forEach((row, i) => {{
+                row.angle += speed;
+                const x1 = Math.sin(row.angle) * radius + radius;
+                const x2 = Math.sin(row.angle + Math.PI) * radius + radius;
+                const z1 = Math.cos(row.angle);
+                const z2 = Math.cos(row.angle + Math.PI);
+                const y = i * 16; 
+                const scale1 = (z1 + 2) * 2.5;
+                const scale2 = (z2 + 2) * 2.5;
+                const opacity1 = (z1 + 1.2) / 2.2;
+                const opacity2 = (z2 + 1.2) / 2.2;
+
+                row.dot1.style.transform = `translate(${{x1}}px, ${{y}}px)`;
+                row.dot1.style.width = scale1 + 'px';
+                row.dot1.style.height = scale1 + 'px';
+                row.dot1.style.opacity = opacity1;
+                row.dot2.style.transform = `translate(${{x2}}px, ${{y}}px)`;
+                row.dot2.style.width = scale2 + 'px';
+                row.dot2.style.height = scale2 + 'px';
+                row.dot2.style.opacity = opacity2;
+
+                const lineWidth = Math.abs(x1 - x2);
+                row.line.style.width = lineWidth + 'px';
+                row.line.style.left = Math.min(x1, x2) + (scale1 / 2) + 'px';
+                row.line.style.top = y + (scale1 / 2) + 'px';
+                row.line.style.opacity = Math.min(opacity1, opacity2) * 0.8;
+            }});
+            animationIdDNA = requestAnimationFrame(animateDNA);
+        }}
+
         const brainContainer = document.getElementById('brain-container');
         const universeContainer = document.getElementById('universe');
         const universeContent = document.getElementById('universe-content');
+        const physicsContainer = document.getElementById('physics-container');
+        const dnaContainer = document.getElementById('dna-outer-container');
 
         window.showField = function(f) {{
             currentField = f;
@@ -808,8 +927,13 @@ def generate_html(science_data, nasa_data):
             
             if (animationIdUniverse) cancelAnimationFrame(animationIdUniverse);
             if (animationIdBrain) cancelAnimationFrame(animationIdBrain);
+            if (animationIdDNA) cancelAnimationFrame(animationIdDNA);
+
             universeContainer.style.display = 'none';
             brainContainer.style.display = 'none';
+            universeContent.style.display = 'none';
+            document.getElementById('physics-container').style.display = 'none';
+            document.getElementById('dna-outer-container').style.display = 'none';
 
             if (f === "천문·우주") {{
                 universeContainer.style.display = 'block';
@@ -825,9 +949,14 @@ def generate_html(science_data, nasa_data):
                     onBrainResize();
                     animateBrain(); 
                 }}
-
-            }} else {{
-                universeContent.style.display = 'none';
+                
+            }} else if (f === "물리학") {{
+                document.getElementById('physics-container').style.display = 'block';
+            
+            }} else if (f === "생명과학") {{
+                document.getElementById('dna-outer-container').style.display = 'block';
+                initDNA();
+                animateDNA();
             }}
 
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText === f));
