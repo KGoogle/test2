@@ -511,13 +511,17 @@
         function animateDNA() {
             const speed = 0.012;
             const radius = 60;
+            const centerX = 120;
+            const centerYOffset = 30;
+
             dnaDots.forEach((row, i) => {
                 row.angle += speed;
-                const x1 = Math.sin(row.angle) * radius + radius;
-                const x2 = Math.sin(row.angle + Math.PI) * radius + radius;
+                
+                const x1 = Math.sin(row.angle) * radius + centerX;
+                const x2 = Math.sin(row.angle + Math.PI) * radius + centerX;
                 const z1 = Math.cos(row.angle);
                 const z2 = Math.cos(row.angle + Math.PI);
-                const y = i * 16; 
+                const y = (i * 15) + centerYOffset;
                 const scale1 = (z1 + 2) * 2.5;
                 const scale2 = (z2 + 2) * 2.5;
                 const opacity1 = (z1 + 1.2) / 2.2;
