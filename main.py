@@ -15,9 +15,9 @@ except ImportError:
     HAS_GENAI = False
     print("google-generativeai 라이브러리가 없습니다.")
 
-NASA_API_KEY = os.environ.get('NASA_API_KEY')
-SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
+NASA_API_KEY = None        # os.environ.get('NASA_API_KEY')
+SPRINGER_API_KEY = None    # os.environ.get("SPRINGER_API_KEY")
+GOOGLE_API_KEY = None      # os.environ.get("GOOGLE_API_KEY") 
 
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
@@ -312,11 +312,23 @@ def fetch_science_org_papers() -> List[Dict]:
 def fetch_videos() -> List[Dict]:
     print("유튜브 영상 목록 가져오는 중...")
     all_vids = []
+    
+    KURZGESAGT_ID = "UCsXVk37bltHxD1rDPwtNM8Q"
+
     for source in YOUTUBE_SOURCES:
         try:
             url = f"https://www.youtube.com/feeds/videos.xml?{'playlist_id' if source.get('type')=='playlist' else 'channel_id'}={source['id']}"
             feed = feedparser.parse(url)
-            for entry in feed.entries[:3]:
+            
+            collected_count = 0
+    
+            for entry in feed.entries:
+
+                if source.get('id') == KURZGESAGT_ID:
+                    desc = entry.get('summary', '').lower()
+                    if "/shorts" in desc:
+                        continue
+
                 all_vids.append({
                     "id": entry.yt_videoid,
                     "title": entry.title,
@@ -325,6 +337,11 @@ def fetch_videos() -> List[Dict]:
                     "date": entry.published,
                     "source": entry.get('author', 'YouTube')
                 })
+
+                collected_count += 1
+                if collected_count >= 3:
+                    break
+
         except: continue
     return all_vids
 
@@ -1060,7 +1077,7 @@ def generate_html(science_data, nasa_data):
                             <div class="card-meta">${{p.date || ''}}</div>
                         </a>`).join('') + '</div>';
                 }} else {{
-                    html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 논문 정보를 준비 중입니다.<br>(API 키 확인 필요)</div>`;
+                    html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 논문 정보를 준비 중입니다.</div>`;
                 }}
 
             }} else if (currentType === 'data') {{
