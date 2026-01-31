@@ -15,9 +15,9 @@ except ImportError:
     HAS_GENAI = False
     print("google-generativeai 라이브러리가 없습니다.")
 
-NASA_API_KEY = os.environ.get('NASA_API_KEY')
-SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
+NASA_API_KEY = None        # os.environ.get('NASA_API_KEY')
+SPRINGER_API_KEY = None    # os.environ.get("SPRINGER_API_KEY")
+GOOGLE_API_KEY = None      # os.environ.get("GOOGLE_API_KEY") 
 
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
@@ -53,8 +53,7 @@ SCIENCE_RSS_URL = "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc
 
 YOUTUBE_SOURCES = [
     {"type": "channel", "id": "UCsXVk37bltHxD1rDPwtNM8Q"}, 
-    {"type": "channel", "id": "UCHnyfMqiRRG1u-2MsSQLbXA"}, 
-    {"type": "channel", "id": "Csooa4yRKGN_zEE8iknghZA"}, 
+    {"type": "channel", "id": "UCHnyfMqiRRG1u-2MsSQLbXA"},
     {"type": "playlist", "id": "PLYeXRzoBwGeHVguBktW327fxb1tKqLXrR"}, 
     {"type": "playlist", "id": "PLkKcqR2KGxgzqeKZo1Rx93kJFokuVkpye"}, 
     {"type": "channel", "id": "UCMc4EmuDxnHPc6pgGW-QWvQ"}, 
