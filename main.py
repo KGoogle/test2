@@ -398,6 +398,8 @@ def collect_and_process_data():
 
     all_data["천문·우주"]["data"] = [
         {"title": "NASA ADS", "desc": "전 세계 천문학 논문 및 초록 통합 데이터베이스", "link": "https://ui.adsabs.harvard.edu/", "source": "NASA / SAO"},
+        {"title": "Astrobites", "desc": "전 세계 대학원생들이 최신 천문학 논문을 학부생 수준으로 쉽고 친절하게 풀어서 설명해 주는 '논문 요약/해설' 사이트", "link": "https://astrobites.org/", "source": "Astrobites"},
+        {"title": "Astropy", "desc": "파이썬 기반 천문학 데이터 분석의 글로벌 표준 라이브러리. 모든 천문학 연구의 기본 도구", "link": "https://www.astropy.org/", "source": "Astropy Project"},
         {"title": "NASA Eyes", "desc": "실시간 데이터 기반 3D 태양계 탐사 시뮬레이션", "link": "https://eyes.nasa.gov/", "source": "NASA JPL"},
         {"title": "나사", "desc": "데이터가 너무 많아...", "link": "https://www.nasa.gov/", "source": "NASA"},
         {"title": "유럽 우주국", "desc": "구구중 버륭", "link": "https://www.esa.int/", "source": "ESA"}
@@ -481,23 +483,33 @@ def generate_html(science_data, nasa_data):
         .orbit {{ fill: none; stroke: rgba(255, 255, 255, 0.2); stroke-width: 1; }}
         .electron {{ fill: #fff; }}
         
-        #dna-outer-container {{ display: none; text-align: center; }}
-        .dna-header-wrapper {{
-            transform: rotate(-15deg); 
-            width: 240px; height: 320px; 
-            margin: 0 auto; position: relative;
-        }}
+#dna-outer-container {{ 
+    display: none;
+    justify-content: center;
+    align-items: center;
+    width: 100%; 
+    height: 100%; 
+}}
+
+.dna-header-wrapper {{
+    transform: rotate(30deg); 
+    width: 240px; 
+    height: 320px; 
+    position: relative; 
+}}
         .dna-container {{ position: relative; width: 100%; height: 100%; }}
         .dna-dot {{
             position: absolute; border-radius: 50%;
             background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(0, 170, 255, 0.8) 30%, rgba(0, 80, 255, 0.1) 70%, transparent 100%);
             mix-blend-mode: screen; filter: drop-shadow(0 0 5px rgba(0, 170, 255, 0.8));
         }}
-        .dna-line {{
-            position: absolute; height: 1px;
-            background: linear-gradient(90deg, rgba(153, 187, 255, 0) 0%, rgba(153, 187, 255, 0.2) 50%, rgba(153, 187, 255, 0) 100%);
-            z-index: -1;
-        }}
+
+.dna-line {{
+    position: absolute; 
+    height: 1px;
+    background: linear-gradient(90deg, rgba(153, 187, 255, 0) 0%, rgba(153, 187, 255, 1) 50%, rgba(153, 187, 255, 0) 100%);
+    z-index: -1;
+}}
         .digital-glow {{ filter: drop-shadow(0 0 15px rgba(0, 170, 255, 0.4)); }}
 
         .header-content {{ position: relative; z-index: 1; pointer-events: none; transition: opacity 0.5s; }}
@@ -555,8 +567,34 @@ def generate_html(science_data, nasa_data):
         .card-desc {{ font-size: 0.9rem; color: #888; margin-bottom: 15px; word-break: keep-all; line-height: 1.6; }}
         .card-meta {{ font-size: 0.8rem; color: #666; margin-top: auto; letter-spacing: 0.05em; }}
         
-        .video-card .thumb-wrapper {{ width: 100%; padding-top: 56.25%; position: relative; margin: -25px -25px 15px -25px; background: #222; }}
-        .video-card .thumb-img {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.8; transition: 0.3s; }}
+.video-card .thumb-wrapper {{ 
+    width: 100%; 
+    padding-top: 56.25%; 
+    position: relative; 
+    margin: 0 0 15px 0;
+    background: #000; 
+    border-radius: 2px;
+    overflow: hidden;
+        }}
+
+.video-card .thumb-img {{ 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%);
+    width: 100%; 
+    height: 100%; 
+    object-fit: contain;
+    opacity: 0.8; 
+    transition: 0.3s; 
+}}
+
+.video-card .source-tag {{ 
+    top: auto;
+    bottom: 25px;
+    right: 25px; 
+}}
+
         .video-card:hover .thumb-img {{ opacity: 1; transform: scale(1.05); }}
         .video-card .play-icon {{ position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }}
         .video-card .play-icon::after {{ content:''; display: block; width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 14px solid #fff; margin-left: 4px; }}
@@ -907,15 +945,18 @@ def generate_html(science_data, nasa_data):
         }}
 
         function animateDNA() {{
-            const speed = 0.012;
+            const speed = 0.014;
             const radius = 60;
+            const centerX = 120;
+            const centerYOffset = 0;
+
             dnaDots.forEach((row, i) => {{
                 row.angle += speed;
-                const x1 = Math.sin(row.angle) * radius + radius;
-                const x2 = Math.sin(row.angle + Math.PI) * radius + radius;
+                const x1 = Math.sin(row.angle) * radius + centerX;
+                const x2 = Math.sin(row.angle + Math.PI) * radius + centerX;
                 const z1 = Math.cos(row.angle);
                 const z2 = Math.cos(row.angle + Math.PI);
-                const y = i * 16; 
+                const y = (i * 17) + centerYOffset;
                 const scale1 = (z1 + 2) * 2.5;
                 const scale2 = (z2 + 2) * 2.5;
                 const opacity1 = (z1 + 1.2) / 2.2;
@@ -978,7 +1019,7 @@ def generate_html(science_data, nasa_data):
                 document.getElementById('physics-container').style.display = 'block';
             
             }} else if (f === "생명과학") {{
-                document.getElementById('dna-outer-container').style.display = 'block';
+                document.getElementById('dna-outer-container').style.display = 'flex'; 
                 initDNA();
                 animateDNA();
             }}
