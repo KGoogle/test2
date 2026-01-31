@@ -492,7 +492,7 @@ def generate_html(science_data, nasa_data):
 }}
 
 .dna-header-wrapper {{
-    transform: rotate(30deg); 
+    transform: rotate(30deg) scale(0.7); 
     width: 240px; 
     height: 320px; 
     position: relative; 
@@ -500,7 +500,7 @@ def generate_html(science_data, nasa_data):
         .dna-container {{ position: relative; width: 100%; height: 100%; }}
         .dna-dot {{
             position: absolute; border-radius: 50%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(0, 170, 255, 0.8) 30%, rgba(0, 80, 255, 0.1) 70%, transparent 100%);
+            background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(0, 170, 255, 1) 30%, rgba(0, 80, 255, 0.1) 70%, transparent 100%);
             mix-blend-mode: screen; filter: drop-shadow(0 0 5px rgba(0, 170, 255, 0.8));
         }}
 
