@@ -15,9 +15,9 @@ except ImportError:
     HAS_GENAI = False
     print("google-generativeai 라이브러리가 없습니다.")
 
-NASA_API_KEY = os.environ.get('NASA_API_KEY')
-SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
+NASA_API_KEY = None        # os.environ.get('NASA_API_KEY')
+SPRINGER_API_KEY = None    # os.environ.get("SPRINGER_API_KEY")
+GOOGLE_API_KEY = None      # os.environ.get("GOOGLE_API_KEY") 
 
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
@@ -40,6 +40,8 @@ SCIENCE_FIELDS = ["천문·우주", "인지·신경", "물리학", "생명과학
 DB_FILE = "science_data.db"
 
 RSS_SOURCES = [
+    {"url": "https://www.nature.com/nature.rss", "fixed_category": None},
+    {"url": "https://www.science.org/rss/news_current.xml", "fixed_category": None},
     {"url": "https://www.sciencedaily.com/rss/top.xml", "fixed_category": None},
     {"url": "https://phys.org/rss-feed/breaking/", "fixed_category": None},
     {"url": "https://www.space.com/feeds/articletype/news", "fixed_category": "천문·우주"},
@@ -170,7 +172,9 @@ def fetch_rss_news() -> List[Dict]:
     for source_info in RSS_SOURCES:
         try:
             feed = feedparser.parse(source_info["url"])
-            if "sciencedaily" in source_info["url"]: source_name = "ScienceDaily"
+            if "nature.com" in source_info["url"]: source_name = "Nature"
+            elif "science.org" in source_info["url"]: source_name = "Science"
+            elif "sciencedaily" in source_info["url"]: source_name = "ScienceDaily"
             elif "space.com" in source_info["url"]: source_name = "Space.com"
             elif "phys.org" in source_info["url"]: source_name = "Phys.org"
             elif "scientificamerican" in source_info["url"]: source_name = "Scientific American"
@@ -179,6 +183,10 @@ def fetch_rss_news() -> List[Dict]:
             
             collected_count = 0
             for entry in feed.entries:
+                
+                if "nature.com" in source_info["url"] and "d41586" not in entry.link:
+                    continue
+
                 if "space.com" in source_info["url"]:
                     if hasattr(entry, 'tags'):
                         if any(tag.term.strip() == "Entertainment" for tag in entry.tags):
