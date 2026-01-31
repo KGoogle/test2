@@ -15,9 +15,9 @@ except ImportError:
     HAS_GENAI = False
     print("google-generativeai 라이브러리가 없습니다.")
 
-NASA_API_KEY = os.environ.get('NASA_API_KEY')
-SPRINGER_API_KEY = os.environ.get("SPRINGER_API_KEY")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") 
+NASA_API_KEY = None        # os.environ.get('NASA_API_KEY')
+SPRINGER_API_KEY = None    # os.environ.get("SPRINGER_API_KEY")
+GOOGLE_API_KEY = None      # os.environ.get("GOOGLE_API_KEY") 
 
 MODEL_NAME = 'gemini-2.5-flash-lite' 
 
@@ -1002,8 +1002,9 @@ def generate_html(science_data, nasa_data):
             
             tabs.push(
                 {{ id: 'news', name: '뉴스' }}, 
-                {{ id: 'videos', name: '콘텐츠' }},
                 {{ id: 'papers', name: '논문' }},
+                {{ id: 'Reviews Paper', name: '리뷰 논문' }},
+                {{ id: 'videos', name: '콘텐츠' }},
                 {{ id: 'data', name: '데이터' }}
             );
 
