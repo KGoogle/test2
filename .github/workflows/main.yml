@@ -2,7 +2,7 @@ name: Auto Update Science Portal
 
 on:
   schedule:
-    - cron: '0 5 * * *'
+    - cron: '30 5 * * *'
   
   workflow_dispatch:
 
