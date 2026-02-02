@@ -413,7 +413,6 @@ def collect_and_process_data():
     all_data["생명과학"]["papers"].extend(bio_journals)
 
     astro_journals = [
-        {"title": "The Astrophysical Journal (ApJ)", "desc": "미국 천문학회에서 발행하며, 천체물리학 분야의 가장 권위 있는 학술지 중 하나입니다.", "link": "https://iopscience.iop.org/journal/0004-637X", "source": "AAS"},
         {"title": "Monthly Notices of the RAS", "desc": "영국 왕립천문학회 저널로, 오랜 역사와 권위를 자랑합니다.", "link": "https://academic.oup.com/mnras", "source": "Oxford Univ Press"},
         {"title": "Astronomy & Astrophysics", "desc": "유럽을 중심으로 발행되는 세계적인 천문학 저널입니다.", "link": "https://www.a-anda.org/", "source": "EDP Sciences"}
     ]
