@@ -306,7 +306,27 @@ def fetch_science_org_papers() -> List[Dict]:
         print(f"Science RSS 에러: {e}")
     return papers
 
-
+def fetch_apj_papers() -> List[Dict]:
+    """The Astrophysical Journal (ApJ) RSS 피드 수집"""
+    print("The Astrophysical Journal (ApJ) 논문 수집 중...")
+    papers = []
+    rss_url = "https://iopscience.iop.org/journal/rss/0004-637X"
+    try:
+        feed = feedparser.parse(rss_url)
+        for entry in feed.entries:
+            papers.append({
+                "title": entry.title,
+                "desc": clean_html(entry.get('summary', entry.get('description', ''))),
+                "link": entry.link,
+                "date": entry.get('published', datetime.now().strftime("%Y-%m-%d")),
+                "source": "The Astrophysical Journal (ApJ)",
+                "fixed_category": "천문·우주"
+            })
+            if len(papers) >= 5:
+                break
+    except Exception as e:
+        print(f"ApJ RSS 에러: {e}")
+    return papers
 
 def fetch_videos() -> List[Dict]:
     print("유튜브 영상 목록 가져오는 중...")
@@ -350,6 +370,10 @@ def collect_and_process_data():
     raw_vids = fetch_videos()
     raw_news = fetch_rss_news()
     raw_papers = fetch_science_org_papers()
+
+    apj_papers = fetch_apj_papers()
+    raw_papers.extend(apj_papers)
+    
     for field in SCIENCE_FIELDS: raw_papers.extend(fetch_springer_papers(field))
 
     classify_and_save_to_db(raw_vids, 'video')
@@ -369,9 +393,8 @@ def collect_and_process_data():
     conn.close()
 
     neuro_journals = [
-        {"title": "Neuron(AI가 선별 및 작성)", "desc": "신경과학 분야 최고의 권위를 자랑하며 세포 및 시스템 신경과학을 다룹니다.", "link": "https://www.cell.com/neuron/home", "source": "Cell Press"},
-        {"title": "Nature Neuroscience(AI가 선별 및 작성)", "desc": "신경과학 전 분야에서 가장 혁신적인 연구를 게재합니다.", "link": "https://www.nature.com/neuro/", "source": "Nature Portfolio"},
-        {"title": "Trends in Cognitive Sciences(AI가 선별 및 작성)", "desc": "인지과학 분야의 최신 흐름을 정리하는 최고 수준의 리뷰 저널입니다.", "link": "https://www.cell.com/trends/cognitive-sciences/home", "source": "Cell Press"}
+        {"title": "Neuron", "desc": "신경과학 분야 최고의 권위를 자랑하며 세포 및 시스템 신경과학을 다룹니다.", "link": "https://www.cell.com/neuron/home", "source": "Cell Press"},
+        {"title": "Trends in Cognitive Sciences", "desc": "인지과학 분야의 최신 흐름을 정리하는 최고 수준의 리뷰 저널입니다.", "link": "https://www.cell.com/trends/cognitive-sciences/home", "source": "Cell Press"}
     ]
     all_data["인지·신경"]["papers"].extend(neuro_journals)
 
@@ -383,7 +406,7 @@ def collect_and_process_data():
     all_data["물리학"]["papers"].extend(physics_journals)
 
     bio_journals = [
-        {"title": "Cell(AI가 선별 및 작성)", "desc": "생명과학 분야의 정점에 있는 학술지로, 분자 및 세포 생물학 연구의 핵심입니다.", "link": "https://www.cell.com/cell/home", "source": "Cell Press"},
+        {"title": "Cell", "desc": "생명과학 분야의 정점에 있는 학술지로, 분자 및 세포 생물학 연구의 핵심입니다.", "link": "https://www.cell.com/cell/home", "source": "Cell Press"},
         {"title": "Nature Methods(AI가 선별 및 작성)", "desc": "생명과학 연구의 새로운 실험 기법과 분석 기술을 다루는 영향력 있는 저널입니다.", "link": "https://www.nature.com/nmeth/", "source": "Nature Portfolio"},
         {"title": "EMBO Journal(AI가 선별 및 작성)", "desc": "유럽 분자생물학 기구에서 발행하며, 분자생물학 분야에서 전통적인 권위를 가집니다.", "link": "https://www.embopress.org/journal/14602075", "source": "EMBO Press"}
     ]
@@ -1046,8 +1069,7 @@ def generate_html(science_data, nasa_data):
                 {{ id: 'papers', name: '논문' }},
                 {{ id: 'Reviews Paper', name: '리뷰 논문' }},
                 {{ id: 'videos', name: '콘텐츠' }},
-                {{ id: 'data', name: '데이터' }},
-                {{ id: 'emsi', name: '임시' }}
+                {{ id: 'data', name: '데이터' }}
             );
 
             container.innerHTML = tabs.map(t => `
