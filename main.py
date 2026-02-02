@@ -345,21 +345,17 @@ def fetch_videos() -> List[Dict]:
     print("유튜브 영상 목록 가져오는 중...")
     all_vids = []
     
-    KURZGESAGT_ID = "UCsXVk37bltHxD1rDPwtNM8Q"
-
     for source in YOUTUBE_SOURCES:
         try:
-            url = f"https://www.youtube.com/feeds/videos.xml?{'playlist_id' if source.get('type')=='playlist' else 'channel_id'}={source['id']}"
+            source_type = 'playlist_id' if source.get('type') == 'playlist' else 'channel_id'
+            url = f"https://www.youtube.com/feeds/videos.xml?{source_type}={source['id']}"
             feed = feedparser.parse(url)
             
             collected_count = 0
     
             for entry in feed.entries:
-
-                if source.get('id') == KURZGESAGT_ID:
-                    desc = entry.get('summary', '').lower()
-                    if "/shorts" in desc:
-                        continue
+                if "/shorts/" in entry.link:
+                    continue
 
                 all_vids.append({
                     "id": entry.yt_videoid,
@@ -374,7 +370,9 @@ def fetch_videos() -> List[Dict]:
                 if collected_count >= 3:
                     break
 
-        except: continue
+        except Exception:
+            continue
+            
     return all_vids
 
 def collect_and_process_data():
