@@ -307,7 +307,6 @@ def fetch_science_org_papers() -> List[Dict]:
     return papers
 
 def fetch_apj_papers() -> List[Dict]:
-    """The Astrophysical Journal (ApJ) RSS 피드 수집"""
     print("The Astrophysical Journal (ApJ) 논문 수집 중...")
     papers = []
     rss_url = "https://iopscience.iop.org/journal/rss/0004-637X"
@@ -384,11 +383,18 @@ def collect_and_process_data():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     for field in SCIENCE_FIELDS:
-        c.execute("SELECT title, link, source, pub_date, type FROM articles WHERE category = ? ORDER BY pub_date DESC LIMIT 15", (field,))
+        c.execute("""SELECT title, link, source, pub_date FROM articles 
+                     WHERE category = ? AND type = 'news' 
+                     ORDER BY pub_date DESC LIMIT 10""", (field,))
         for r in c.fetchall():
-            item = {"title": r[0], "link": r[1], "source": r[2], "date": r[3]}
-            key = "news" if r[4] == 'news' else "papers"
-            all_data[field][key].append(item)
+            all_data[field]["news"].append({"title": r[0], "link": r[1], "source": r[2], "date": r[3]})
+
+        c.execute("""SELECT title, link, source, pub_date FROM articles 
+                     WHERE category = ? AND type = 'paper' 
+                     ORDER BY pub_date DESC LIMIT 10""", (field,))
+        for r in c.fetchall():
+            all_data[field]["papers"].append({"title": r[0], "link": r[1], "source": r[2], "date": r[3]})
+            
         all_data[field]["videos"] = get_latest_videos(category=field, limit=8)
     conn.close()
 
