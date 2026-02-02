@@ -116,25 +116,38 @@ def get_nasa_data():
     return None
 
 def classify_and_save_to_db(items: List[Dict], item_type: str):
-    if not items or not GOOGLE_API_KEY: return
+    if not items: return
     
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    new_items = []
+    to_classify = []
+    
     for it in items:
         uid = it.get('id') if item_type == 'video' else it.get('link')
         table = 'videos' if item_type == 'video' else 'articles'
         col = 'id' if item_type == 'video' else 'link'
+        
         c.execute(f"SELECT 1 FROM {table} WHERE {col} = ?", (uid,))
-        if not c.fetchone(): new_items.append(it)
+        if c.fetchone(): continue
+
+        if it.get('fixed_category'):
+            if item_type == 'video':
+                c.execute("INSERT OR REPLACE INTO videos VALUES (?,?,?,?,?,?,?)",
+                           (it['id'], it['title'], it['link'], it['thumbnail'], it['date'], it.get('fixed_category'), it['source']))
+            else:
+                c.execute("INSERT OR REPLACE INTO articles VALUES (?,?,?,?,?,?)",
+                           (it['link'], it['title'], it['date'], it.get('fixed_category'), it['source'], item_type))
+        else:
+            to_classify.append(it)
+            
+    conn.commit()
     conn.close()
 
-    if not new_items: return
-    print(f"새로운 {item_type} {len(new_items)}개 AI 분류 시작...")
-
-    for i in range(0, len(new_items), 100):
-        batch = new_items[i:i+100]
+    if not items or not GOOGLE_API_KEY: return
+    
+    for i in range(0, len(to_classify), 100):
+        batch = to_classify[i:i+100]
         context = "\n".join([f"ID:{idx} | Title:{it['title']}" for idx, it in enumerate(batch)])
         
         prompt = f"""
@@ -163,7 +176,8 @@ def classify_and_save_to_db(items: List[Dict], item_type: str):
                                    (item['link'], item['title'], item['date'], cat, item['source'], item_type))
                 conn.commit()
                 conn.close()
-            except: print("AI 응답 해석 실패, 다음 배치로 넘어감")
+            except: 
+                print("AI 응답 해석 실패, 다음 배치로 넘어감")
 
 def fetch_rss_news() -> List[Dict]:
     all_news = []
@@ -395,7 +409,7 @@ def collect_and_process_data():
         for r in c.fetchall():
             all_data[field]["papers"].append({"title": r[0], "link": r[1], "source": r[2], "date": r[3]})
             
-        all_data[field]["videos"] = get_latest_videos(category=field, limit=8)
+        all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
     conn.close()
 
     neuro_journals = [
@@ -623,7 +637,10 @@ def generate_html(science_data, nasa_data):
     right: 25px; 
 }}
 
-        .video-card:hover .thumb-img {{ opacity: 1; transform: scale(1.05); }}
+        .video-card:hover .thumb-img {{
+    opacity: 1; 
+    transform: translate(-50%, -50%) scale(1.05); 
+}}
         .video-card .play-icon {{ position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }}
         .video-card .play-icon::after {{ content:''; display: block; width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 14px solid #fff; margin-left: 4px; }}
         
