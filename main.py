@@ -154,13 +154,24 @@ def classify_and_save_to_db(items: List[Dict], item_type: str):
         context = "\n".join(lines)
         
         prompt = f"""
-        Analyze science titles and perform two tasks:
-        1. Pick categories from: {', '.join(SCIENCE_FIELDS)}. The FIRST category must be the most relevant.
-           If a 'Fixed Category' is provided, you MUST use that as the FIRST category.
-        2. Translate the title into natural, professional Korean.
+        You are a highly precise Science Translator specialized in academic journals (Nature, Science, Cell). 
+        Your absolute priority is **Scientific Integrity** and **Zero Distortion**.
+
+        Analyze the given titles and perform two tasks:
+
+        1. [Classify]: Pick categories from: {', '.join(SCIENCE_FIELDS)}. 
+           - The FIRST category must be the most relevant.
+           - If a 'Fixed Category' is provided, you MUST use it as the FIRST category.
+
+        2. [Translate]: Translate the title into professional Korean with 100% factual accuracy.
+           - **No Exaggeration**: Do not change the level of certainty. If the original uses 'may', 'suggests', or 'potential', translate them accurately (e.g., '~할 가능성', '~을 시사'). Never translate 'suggests' as 'proved'.
+           - **Technical Precision**: Use the exact Korean academic terms. Do not simplify terms if it leads to loss of nuance.
+           - **No Omission**: Every key scientific variable or subject mentioned in the original must be present in the translation.
+           - **Maintain Original Intent**: Follow the original author's logic and tone. Do not add 'clickbait' elements or sensationalize.
+           - **Keep Proper Nouns/Acronyms**: Keep globally recognized acronyms (NASA, CERN, CRISPR, JWST) and gene/protein names in their standard international forms.
 
         Return ONLY a JSON array:
-        [{{"id": 0, "tags": ["Category1", "Category2"], "trans": "번역된 한국어 제목"}}]
+        [{{"id": 0, "tags": ["Category1", "Category2"], "trans": "정밀하게 번역된 한국어 제목"}}]
 
         [Titles]:
         {context}
