@@ -126,8 +126,7 @@ def classify_and_save_to_db(items: List[Dict], item_type: str):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    to_classify = []
-    
+    to_process = []
     for it in items:
         uid = it.get('id') if item_type == 'video' else it.get('link')
         table = 'videos' if item_type == 'video' else 'articles'
@@ -135,30 +134,34 @@ def classify_and_save_to_db(items: List[Dict], item_type: str):
         
         c.execute(f"SELECT 1 FROM {table} WHERE {col} = ?", (uid,))
         if c.fetchone(): continue
-
-        if it.get('fixed_category'):
-            if item_type == 'video':
-                c.execute("INSERT OR REPLACE INTO videos VALUES (?,?,?,?,?,?,?)",
-                           (it['id'], it['title'], it['link'], it['thumbnail'], it['date'], it.get('fixed_category'), it['source']))
-            else:
-                c.execute("INSERT OR REPLACE INTO articles VALUES (?,?,?,?,?,?)",
-                           (it['link'], it['title'], it['date'], it.get('fixed_category'), it['source'], item_type))
-        else:
-            to_classify.append(it)
+        
+        to_process.append(it)
             
     conn.commit()
     conn.close()
 
-    if not items or not GOOGLE_API_KEY: return
+    if not to_process or not GOOGLE_API_KEY: return
     
-    for i in range(0, len(to_classify), 100):
-        batch = to_classify[i:i+100]
-        context = "\n".join([f"ID:{idx} | Title:{it['title']}" for idx, it in enumerate(batch)])
+    batch_size = 100
+    for i in range(0, len(to_process), batch_size):
+        batch = to_process[i:i+batch_size]
+        
+        lines = []
+        for idx, it in enumerate(batch):
+            fixed = f" (Fixed Category: {it['fixed_category']})" if it.get('fixed_category') else ""
+            lines.append(f"ID:{idx} | Title:{it['title']}{fixed}")
+        
+        context = "\n".join(lines)
         
         prompt = f"""
-        Analyze science titles and pick categories from: {', '.join(SCIENCE_FIELDS)}.
-        The FIRST category must be the most relevant.
-        Return ONLY a JSON array: [{{"id": 0, "tags": ["Category1", "Category2"]}}]
+        Analyze science titles and perform two tasks:
+        1. Pick categories from: {', '.join(SCIENCE_FIELDS)}. The FIRST category must be the most relevant.
+           If a 'Fixed Category' is provided, you MUST use that as the FIRST category.
+        2. Translate the title into natural, professional Korean.
+
+        Return ONLY a JSON array:
+        [{{"id": 0, "tags": ["Category1", "Category2"], "trans": "번역된 한국어 제목"}}]
+
         [Titles]:
         {context}
         """
@@ -167,22 +170,28 @@ def classify_and_save_to_db(items: List[Dict], item_type: str):
         if response:
             try:
                 results = json.loads(re.search(r'\[.*\]', response.text, re.DOTALL).group())
-                res_map = {r['id']: r['tags'] for r in results}
+                res_map = {r['id']: r for r in results}
                 
                 conn = sqlite3.connect(DB_FILE)
                 curr = conn.cursor()
                 for idx, item in enumerate(batch):
-                    cat = res_map.get(idx, ["기타"])[0]
+                    res = res_map.get(idx, {})
+                    
+                    ai_tags = res.get('tags', ["기타"])
+                    category = item.get('fixed_category') or (ai_tags[0] if ai_tags else "기타")
+                    
+                    translated_title = res.get('trans', item['title'])
+                    
                     if item_type == 'video':
                         curr.execute("INSERT OR REPLACE INTO videos VALUES (?,?,?,?,?,?,?)",
-                                   (item['id'], item['title'], item['link'], item['thumbnail'], item['date'], cat, item['source']))
+                                   (item['id'], translated_title, item['link'], item['thumbnail'], item['date'], category, item['source']))
                     else:
                         curr.execute("INSERT OR REPLACE INTO articles VALUES (?,?,?,?,?,?)",
-                                   (item['link'], item['title'], item['date'], cat, item['source'], item_type))
+                                   (item['link'], translated_title, item['date'], category, item['source'], item_type))
                 conn.commit()
                 conn.close()
-            except: 
-                print("AI 응답 해석 실패, 다음 배치로 넘어감")
+            except Exception as e: 
+                print(f"AI 응답 처리 중 에러 발생: {e}")
 
 def fetch_rss_news() -> List[Dict]:
     all_news = []
@@ -444,8 +453,7 @@ def collect_and_process_data():
     conn.close()
 
     neuro_journals = [
-        {"title": "Neuron", "desc": "신경과학 분야 최고의 권위를 자랑하며 세포 및 시스템 신경과학을 다룹니다.", "link": "https://www.cell.com/neuron/home", "source": "Cell Press"},
-        {"title": "Trends in Cognitive Sciences", "desc": "인지과학 분야의 최신 흐름을 정리하는 최고 수준의 리뷰 저널입니다.", "link": "https://www.cell.com/trends/cognitive-sciences/home", "source": "Cell Press"}
+        {"title": "Neuron", "desc": "신경과학 분야 최고의 권위를 자랑하며 세포 및 시스템 신경과학을 다룹니다.", "link": "https://www.cell.com/neuron/home", "source": "Cell Press"}
     ]
     all_data["인지·신경"]["papers"].extend(neuro_journals)
 
