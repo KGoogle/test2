@@ -61,6 +61,11 @@ YOUTUBE_SOURCES = [
     {"type": "channel", "id": "UCIk1-yPCTnFuzfgu4gyfWqw"}  
 ]
 
+REVIEW_SOURCES = [
+    {"name": "Annual Review of Astronomy and Astrophysics", "url": "https://www.annualreviews.org/rss/content/journals/astro/latestarticles?fmt=rss", "field": "천문·우주"},
+     {"name": "Annual Review of Neuroscience", "url": "https://www.annualreviews.org/rss/content/journals/neuro/latestarticles?fmt=rss", "field": "인지·신경"}
+]
+
 def call_gemini_with_retry(model, prompt, api_key, retries=2):
     if not api_key or not model:
         return None
@@ -341,6 +346,25 @@ def fetch_apj_papers() -> List[Dict]:
         print(f"ApJ RSS 에러: {e}")
     return papers
 
+def fetch_all_reviews() -> List[Dict]:
+    print("리뷰 논문 수집 시작...")
+    results = []
+    for source in REVIEW_SOURCES:
+        try:
+            feed = feedparser.parse(source["url"])
+            for entry in feed.entries[:5]:
+                results.append({
+                    "title": entry.title,
+                    "link": entry.link,
+                    "date": entry.get('published', datetime.now().strftime("%Y-%m-%d")),
+                    "source": source["name"],
+                    "fixed_category": source["field"],
+                    "type": "Reviews Paper"
+                })
+        except Exception as e:
+            print(f"수집 실패 ({source['name']}): {e}")
+    return results
+
 def fetch_videos() -> List[Dict]:
     print("유튜브 영상 목록 가져오는 중...")
     all_vids = []
@@ -381,6 +405,7 @@ def collect_and_process_data():
     raw_vids = fetch_videos()
     raw_news = fetch_rss_news()
     raw_papers = fetch_science_org_papers()
+    raw_reviews = fetch_all_reviews()
 
     apj_papers = fetch_apj_papers()
     raw_papers.extend(apj_papers)
@@ -390,10 +415,12 @@ def collect_and_process_data():
     classify_and_save_to_db(raw_vids, 'video')
     classify_and_save_to_db(raw_news, 'news')
     classify_and_save_to_db(raw_papers, 'paper')
+    classify_and_save_to_db(raw_reviews, 'Reviews Paper')
 
-    all_data = {field: {"news": [], "videos": [], "papers": [], "data": []} for field in SCIENCE_FIELDS}
+    all_data = {field: {"news": [], "videos": [], "papers": [], "reviews": [], "data": []} for field in SCIENCE_FIELDS}
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+
     for field in SCIENCE_FIELDS:
         c.execute("""SELECT title, link, source, pub_date FROM articles 
                      WHERE category = ? AND type = 'news' 
@@ -408,6 +435,12 @@ def collect_and_process_data():
             all_data[field]["papers"].append({"title": r[0], "link": r[1], "source": r[2], "date": r[3]})
             
         all_data[field]["videos"] = get_latest_videos(category=field, limit=5)
+        
+        c.execute("""SELECT title, link, source, pub_date FROM articles 
+                     WHERE category = ? AND type = 'Reviews Paper' 
+                     ORDER BY pub_date DESC LIMIT 10""", (field,))
+        for r in c.fetchall():
+            all_data[field]["reviews"].append({"title": r[0], "link": r[1], "source": r[2], "date": r[3]})
     conn.close()
 
     neuro_journals = [
@@ -1098,7 +1131,7 @@ def generate_html(science_data, nasa_data):
         }}
 
         function render() {{
-            const science = fullData.science[currentField] || {{ news: [], videos: [], papers: [], data: [] }};
+            const science = fullData.science[currentField] || {{ news: [], videos: [], papers: [], reviews: [], data: [] }};
             const nasa = fullData.nasa;
             const container = document.getElementById('main-content');
             let html = '';
@@ -1163,6 +1196,20 @@ def generate_html(science_data, nasa_data):
                 }} else {{
                     html = `<div style="padding:100px; text-align:center; color:#666;">${{currentField}} 분야의 논문 정보를 준비 중입니다.</div>`;
                 }}
+
+                }} else if (currentType === 'Reviews Paper') {{
+        const reviewList = science.reviews || []; // Python에서 넘겨준 reviews 데이터를 가져옴
+        if (reviewList.length === 0) {{
+            html = '<div style="text-align:center; padding:50px;">수집된 리뷰 논문이 없습니다.</div>';
+        }} else {{
+            html = '<div class="card-grid">' + reviewList.map(r => `
+                <a href="${{r.link}}" target="_blank" class="card">
+                    <span class="source-tag">${{r.source}}</span>
+                    <span class="ai-tag">#리뷰_저널</span>
+                    <div class="card-title">${{r.title}}</div>
+                    <div class="card-meta">${{r.date}}</div>
+                </a>`).join('') + '</div>';
+        }}
 
             }} else if (currentType === 'data') {{
                 const list = science.data || [];
